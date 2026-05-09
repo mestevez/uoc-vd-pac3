@@ -5,8 +5,27 @@ Vite + React + TypeScript starter for scrollama-based scrollytelling.
 ## What’s included
 
 - `scrollama` integration for step-driven story progression
+- `d3` charts that react to each story step
 - A sticky visual panel paired with narrative steps
 - Responsive layout and reduced-motion support
+
+## Data treatment (manual step)
+
+Place your raw dataset at:
+
+`data/raw/hotel_bookings.csv`
+
+Generate the treated file used by the charts:
+
+```bash
+npm run data:treat
+```
+
+The script creates:
+
+`public/data/hotel_bookings_ready.csv`
+
+This generated CSV is what the web app loads at runtime.
 
 ## Getting started
 
@@ -59,8 +78,11 @@ If you rename the repository, update the `base` value in `vite.config.ts` to mat
 ## Project structure
 
 - `src/App.tsx` — scrollytelling layout and scrollama setup
+- `src/components/charts/StoryChart.tsx` — D3 charts used in the sticky panel
+- `src/lib/hotelData.ts` — loader and typed row mapping for prepared CSV
 - `src/main.tsx` — React entry point
 - `src/styles.css` — global story styling
+- `scripts/data-treatment.mjs` — CSV cleaning and normalization step
 - `vite.config.ts` — Vite configuration
 - `.github/workflows/` — CI and GitHub Pages workflows
 

@@ -140,6 +140,66 @@ h1 {
   margin-bottom: 0;
 }
 
+.story-chart {
+  margin-top: 18px;
+}
+
+.story-chart__title {
+  font-size: 0.95rem;
+  color: #bfdbfe;
+  margin-bottom: 2px;
+}
+
+.story-chart__subtitle {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-bottom: 12px;
+}
+
+.story-chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.story-chart__grid {
+  stroke: rgba(148, 163, 184, 0.18);
+  stroke-width: 1;
+}
+
+.story-chart__axis-text {
+  fill: #94a3b8;
+  font-size: 0.67rem;
+}
+
+.story-chart__bar {
+  fill: #60a5fa;
+}
+
+.story-chart__line {
+  stroke: #22d3ee;
+  stroke-width: 2.5;
+}
+
+.story-chart__dot {
+  fill: #22d3ee;
+}
+
+.story-chart__empty,
+.story-chart__error {
+  margin: 14px 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
+  font-size: 0.88rem;
+}
+
+.story-chart__error {
+  background: rgba(248, 113, 113, 0.14);
+  color: #fecaca;
+}
+
 .story-copy {
   display: grid;
   gap: 22vh;
@@ -185,6 +245,10 @@ h1 {
 
   .story-copy {
     gap: 18vh;
+  }
+
+  .story-chart__axis-text {
+    font-size: 0.63rem;
   }
 }
 

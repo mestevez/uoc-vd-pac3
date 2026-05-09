@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import scrollama from 'scrollama';
+import StoryChart from './components/charts/StoryChart';
+import { loadHotelBookingsReadyCsv, type HotelBookingReadyRow } from './lib/hotelData';
 
 type StoryStep = {
   id: string;
@@ -12,34 +14,34 @@ type StoryStep = {
 const steps: StoryStep[] = [
   {
     id: 'discover',
-    eyebrow: 'Step 01',
-    title: 'Build a clear narrative arc',
+    eyebrow: 'Introducció',
+    title: 'Comencem pel context',
     body:
-      'Start with a strong opening, keep each section focused, and let the visualization update as the reader scrolls.',
+      'Portugal és una destinació turística molt atractiva, que rep viatgers de molts països i amb interessos molt diversos.',
     accent: '#7c3aed',
   },
   {
     id: 'focus',
-    eyebrow: 'Step 02',
-    title: 'Use a sticky canvas or panel',
+    eyebrow: 'Pas 02',
+    title: 'Segmentar ajuda a predir millor',
     body:
-      'Keep the visual context visible while the copy changes. This is the core pattern scrollama is great at enabling.',
+      'No tots els canals de venda es comporten igual: alguns reserven amb molta antelació i cancel·len més sovint.',
     accent: '#0ea5e9',
   },
   {
     id: 'respond',
-    eyebrow: 'Step 03',
-    title: 'Animate with intention',
+    eyebrow: 'Pas 03',
+    title: 'La temporalitat també importa',
     body:
-      'Trigger lightweight transitions on step enter and reset or reveal state as needed when the user scrolls back.',
+      'L’evolució mensual de les cancel·lacions permet detectar períodes de més risc i anticipar decisions d’inventari.',
     accent: '#f97316',
   },
   {
     id: 'finish',
-    eyebrow: 'Step 04',
-    title: 'End with a takeaway',
+    eyebrow: 'Pas 04',
+    title: 'Cap a una estratègia d’overbooking informada',
     body:
-      'Close with a concise conclusion and a next action so the story feels complete and ready for expansion.',
+      'Els patrons de dipòsit i preu mitjà (ADR) poden guiar polítiques d’overbooking més precises i menys arriscades.',
     accent: '#22c55e',
   },
 ];
@@ -47,6 +49,8 @@ const steps: StoryStep[] = [
 export default function App() {
   const [activeStep, setActiveStep] = useState(0);
   const [isReducedMotion, setIsReducedMotion] = useState(false);
+  const [rows, setRows] = useState<HotelBookingReadyRow[]>([]);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   const activeStory = useMemo(() => steps[activeStep] ?? steps[0], [activeStep]);
 
@@ -58,6 +62,22 @@ export default function App() {
 
     mediaQuery.addEventListener('change', updateMotionPreference);
     return () => mediaQuery.removeEventListener('change', updateMotionPreference);
+  }, []);
+
+  useEffect(() => {
+    loadHotelBookingsReadyCsv()
+      .then((loadedRows) => {
+        setRows(loadedRows);
+        setDataError(null);
+      })
+      .catch((error) => {
+        setRows([]);
+        setDataError(
+          error instanceof Error
+            ? error.message
+            : 'No s\'ha pogut carregar el fitxer hotel_bookings_ready.csv.',
+        );
+      });
   }, []);
 
   useEffect(() => {
@@ -90,10 +110,9 @@ export default function App() {
     <main className="page-shell">
       <section className="hero">
         <p className="eyebrow">Vite + React + scrollama</p>
-        <h1>Scrollytelling starter for interactive web stories</h1>
+        <h1>Anticipant cancel·lacions per controlar l’overbooking</h1>
         <p className="hero-copy">
-          This project gives you a fast foundation for narrative scrolling, step-driven
-          visualization updates, and future expansion into charts, maps, or data-rich sequences.
+          Un recorregut basat en dades de reserves hoteleres de dues localitzacions de Portugal que explora patrons de cancel·lació i com aquests poden ajudar a gestionar l’overbooking de manera més informada.
         </p>
       </section>
 
@@ -110,6 +129,15 @@ export default function App() {
             <h2>{activeStory.title}</h2>
             <p>{activeStory.body}</p>
 
+            {dataError ? (
+              <p className="story-chart__error">
+                No s\'han pogut carregar les dades preparades. Executa `npm run data:treat` per
+                generar `public/data/hotel_bookings_ready.csv`.
+              </p>
+            ) : (
+              <StoryChart rows={rows} activeStep={activeStep} />
+            )}
+
             <div className="story-visual__meter" aria-hidden="true">
               {steps.map((step, index) => (
                 <span
@@ -122,8 +150,8 @@ export default function App() {
 
             <p className="story-visual__hint">
               {isReducedMotion
-                ? 'Reduced motion is enabled, so updates stay simple and direct.'
-                : 'Scroll to advance the story and trigger step changes.'}
+                ? 'Tens activat el moviment reduït, per això les actualitzacions són simples i directes.'
+                : 'Desplaça’t per avançar en la història i moure’t entre els diferents passos.'}
             </p>
           </div>
         </div>
