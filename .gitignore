@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Production build output
+dist/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# macOS / JetBrains
+.DS_Store
+.idea/
+
