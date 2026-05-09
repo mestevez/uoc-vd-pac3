@@ -3,8 +3,14 @@ import type { HotelBookingReadyRow } from '../../lib/hotelData';
 
 type StoryChartProps = {
   rows: HotelBookingReadyRow[];
-  activeStep: number;
+  chartId: StoryChartId;
 };
+
+export type StoryChartId =
+  | 'cancel-rate-by-hotel'
+  | 'lead-time-by-segment'
+  | 'monthly-cancel-trend'
+  | 'adr-by-deposit';
 
 type BarPoint = {
   label: string;
@@ -36,8 +42,8 @@ function byValueDesc<T extends { value: number }>(a: T, b: T): number {
   return b.value - a.value;
 }
 
-function getChartModel(rows: HotelBookingReadyRow[], activeStep: number): ChartModel {
-  if (activeStep === 0) {
+function getChartModel(rows: HotelBookingReadyRow[], chartId: StoryChartId): ChartModel {
+  if (chartId === 'cancel-rate-by-hotel') {
     const grouped = Array.from(
       d3.rollup(
         rows,
@@ -55,7 +61,7 @@ function getChartModel(rows: HotelBookingReadyRow[], activeStep: number): ChartM
     );
   }
 
-  if (activeStep === 1) {
+  if (chartId === 'lead-time-by-segment') {
     const grouped = Array.from(
       d3.rollup(rows, (values) => d3.mean(values, (d) => d.leadTime) ?? 0, (d) => d.marketSegment),
       ([label, value]) => ({ label, value }),
@@ -71,7 +77,7 @@ function getChartModel(rows: HotelBookingReadyRow[], activeStep: number): ChartM
     );
   }
 
-  if (activeStep === 2) {
+  if (chartId === 'monthly-cancel-trend') {
     const grouped = Array.from(
       d3.rollup(rows, (values) => d3.mean(values, (d) => d.isCanceled) ?? 0, (d) => d.arrivalYm),
       ([label, value]) => {
@@ -110,12 +116,12 @@ function getChartModel(rows: HotelBookingReadyRow[], activeStep: number): ChartM
   );
 }
 
-export default function StoryChart({ rows, activeStep }: StoryChartProps) {
+export default function StoryChart({ rows, chartId }: StoryChartProps) {
   if (rows.length === 0) {
     return <p className="story-chart__empty">No hi ha dades carregades encara.</p>;
   }
 
-  const model = getChartModel(rows, activeStep);
+  const model = getChartModel(rows, chartId);
   const width = 620;
   const height = 260;
   const margin = { top: 20, right: 20, bottom: 56, left: 64 };
