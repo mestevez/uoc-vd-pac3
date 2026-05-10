@@ -8,12 +8,10 @@ type StoryVisual =
       kind: 'image';
       src: string;
       alt: string;
-      caption: string;
     }
   | {
       kind: 'chart';
       chartId: StoryChartId;
-      caption: string;
     };
 
 type StoryStep = {
@@ -28,29 +26,26 @@ type StoryStep = {
 const steps: StoryStep[] = [
   {
     id: 'intro-context',
-    eyebrow: 'Introduccio',
+    eyebrow: '',
     title: 'Portugal, destinacio clau',
-    body: 'Portugal és una destinació turística molt atractiva, que rep viatgers de molts països i amb interessos molt diversos.',
+    body: 'Portugal és una destinació turística molt atractiva, amb un gran volum de viatges locals i l’arribada de viatgers de molts països, amb interessos molt diversos.',
     accent: '#7c3aed',
     visual: {
-      kind: 'image',
-      src: 'images/intro/portugal-context.svg',
-      alt: 'Mapa esquematic de Portugal i flux de viatgers.',
-      caption: 'Context general del mercat turistic a Portugal.',
+      kind: 'chart',
+      chartId: 'routes-map',
     },
   },
   {
-    id: 'intro-demand',
-    eyebrow: 'Pas 02',
-    title: 'Demanda sostinguda durant lany',
+    id: 'intro-problem',
+    eyebrow: '',
+    title: 'Gran volúm de cancel·lacions',
     body:
-      'La combinacio de turisme urbà i vacacional fa que la demanda hotelera es mantingui activa en diferents mesos de lany.',
+      'Les cancel·lacions són un repte important per a la gestió hotelera, ja que poden afectar la previsió d’ocupació i les decisions d’inventari.',
     accent: '#8b5cf6',
     visual: {
       kind: 'image',
       src: 'images/intro/seasonality.svg',
       alt: 'Calendari amb temporada alta i mitjana de reserves.',
-      caption: 'La temporada condiciona la pressio sobre l inventari hoteler.',
     },
   },
   {
@@ -64,7 +59,6 @@ const steps: StoryStep[] = [
       kind: 'image',
       src: 'images/intro/cancellation-risk.svg',
       alt: 'Indicador de risc de cancel·lacio sobre reserves futures.',
-      caption: 'La incertesa de cancel·lacio impacta la decisio d overbooking.',
     },
   },
   {
@@ -77,7 +71,6 @@ const steps: StoryStep[] = [
     visual: {
       kind: 'chart',
       chartId: 'cancel-rate-by-hotel',
-      caption: 'Comparativa de taxa de cancel·lacio entre tipus d hotel.',
     },
   },
   {
@@ -90,7 +83,6 @@ const steps: StoryStep[] = [
     visual: {
       kind: 'chart',
       chartId: 'monthly-cancel-trend',
-      caption: 'Evolucio mensual de la taxa de cancel·lacio.',
     },
   },
   {
@@ -103,7 +95,6 @@ const steps: StoryStep[] = [
     visual: {
       kind: 'chart',
       chartId: 'lead-time-by-segment',
-      caption: 'Lead time mitja per segment de mercat.',
     },
   },
   {
@@ -116,28 +107,16 @@ const steps: StoryStep[] = [
     visual: {
       kind: 'chart',
       chartId: 'adr-by-deposit',
-      caption: 'ADR mitja per tipus de diposit.',
     },
   },
 ];
 
 export default function App() {
   const [activeStep, setActiveStep] = useState(0);
-  const [isReducedMotion, setIsReducedMotion] = useState(false);
   const [rows, setRows] = useState<HotelBookingReadyRow[]>([]);
   const [dataError, setDataError] = useState<string | null>(null);
 
   const activeStory = useMemo(() => steps[activeStep] ?? steps[0], [activeStep]);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-    const updateMotionPreference = () => setIsReducedMotion(mediaQuery.matches);
-    updateMotionPreference();
-
-    mediaQuery.addEventListener('change', updateMotionPreference);
-    return () => mediaQuery.removeEventListener('change', updateMotionPreference);
-  }, []);
 
   useEffect(() => {
     loadHotelBookingsReadyCsv()
@@ -218,25 +197,20 @@ export default function App() {
               boxShadow: `0 0 0 1px ${activeStory.accent}33, 0 24px 80px ${activeStory.accent}22`,
             }}
           >
-            {activeStory.visual.kind === 'image' ? (
-              <figure className="story-visual__media">
-                <img
-                  src={`${import.meta.env.BASE_URL}${activeStory.visual.src}`}
-                  alt={activeStory.visual.alt}
-                />
-                <figcaption>{activeStory.visual.caption}</figcaption>
-              </figure>
-            ) : dataError ? (
-              <p className="story-chart__error">
-                No s\'han pogut carregar les dades preparades. Executa `npm run data:treat` per
-                generar `public/data/hotel_bookings_ready.csv`.
-              </p>
-            ) : (
-              <>
+            <div className="story-visual__content">
+              {activeStory.visual.kind === 'image' ? (
+                <div className="story-visual__media" role="img" aria-label={activeStory.visual.alt}>
+                  <img
+                    src={`${import.meta.env.BASE_URL}${activeStory.visual.src}`}
+                    alt={activeStory.visual.alt}
+                  />
+                </div>
+              ) : dataError ? (
+                <div className="story-chart__error" aria-label="Chart data unavailable" />
+              ) : (
                 <StoryChart rows={rows} chartId={activeStory.visual.chartId} />
-                <p className="story-visual__caption">{activeStory.visual.caption}</p>
-              </>
-            )}
+              )}
+            </div>
 
             <div className="story-visual__meter" aria-hidden="true">
               {steps.map((step, index) => (
@@ -248,11 +222,6 @@ export default function App() {
               ))}
             </div>
 
-            <p className="story-visual__hint">
-              {isReducedMotion
-                ? 'Tens activat el moviment reduït, per això les actualitzacions són simples i directes.'
-                : 'Desplaça’t per avançar en la història i moure’t entre els diferents passos.'}
-            </p>
           </div>
         </div>
       </section>

@@ -94,16 +94,28 @@ h1 {
   min-height: calc(100vh - 48px);
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 .story-visual__card {
   width: 100%;
+  height: min(70vh, 760px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 28px;
   background: rgba(15, 23, 42, 0.72);
   backdrop-filter: blur(20px);
-  padding: 28px;
+  padding: 14px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   transition: border-color 220ms ease, box-shadow 220ms ease, transform 220ms ease;
+}
+
+.story-visual__content {
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 24px;
 }
 
 .story-visual__card h2 {
@@ -119,7 +131,11 @@ h1 {
 .story-visual__meter {
   display: flex;
   gap: 10px;
-  margin: 24px 0 16px;
+  margin: 0;
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 10px;
 }
 
 .story-visual__meter span {
@@ -141,12 +157,14 @@ h1 {
 }
 
 .story-visual__media {
-  margin: 10px 0 4px;
+  margin: 0;
+  height: 100%;
 }
 
 .story-visual__media img {
   width: 100%;
-  aspect-ratio: 16 / 10;
+  height: 100%;
+  aspect-ratio: auto;
   object-fit: cover;
   border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.28);
@@ -161,7 +179,13 @@ h1 {
 }
 
 .story-chart {
-  margin-top: 18px;
+  margin-top: 0;
+  height: 100%;
+}
+
+.story-chart--map {
+  margin-top: 6px;
+  position: relative;
 }
 
 .story-chart__title {
@@ -178,8 +202,12 @@ h1 {
 
 .story-chart svg {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
+}
+
+.story-chart--map svg {
+  min-height: 0;
 }
 
 .story-chart__grid {
@@ -205,9 +233,85 @@ h1 {
   fill: #22d3ee;
 }
 
+.story-map__sphere {
+  fill: #0b1324;
+  stroke: rgba(148, 163, 184, 0.35);
+  stroke-width: 1;
+}
+
+.story-map__land {
+  fill: rgba(51, 65, 85, 0.7);
+}
+
+.story-map__boundaries {
+  fill: none;
+  stroke: rgba(148, 163, 184, 0.45);
+  stroke-width: 0.55;
+}
+
+.story-map__graticule {
+  fill: none;
+  stroke: rgba(148, 163, 184, 0.16);
+  stroke-width: 0.8;
+}
+
+.story-map__portugal-focus {
+  fill: rgba(56, 189, 248, 0.08);
+  stroke: rgba(56, 189, 248, 0.65);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.story-map__route {
+  stroke-linecap: round;
+}
+
+.story-map__route--highlight {
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px rgba(248, 250, 252, 0.3));
+}
+
+.story-map__hotel-dot {
+  fill: #f8fafc;
+  stroke: #0f172a;
+  stroke-width: 1.2;
+}
+
+.story-map__label {
+  fill: #cbd5e1;
+  font-size: 0.68rem;
+}
+
+.story-map__controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 6px;
+}
+
+.story-map__preset-btn {
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.8);
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.story-map__preset-btn.is-active {
+  border-color: rgba(56, 189, 248, 0.9);
+  background: rgba(14, 165, 233, 0.25);
+  color: #e0f2fe;
+}
+
 .story-chart__empty,
 .story-chart__error {
-  margin: 14px 0;
+  margin: 0;
+  height: 100%;
+  min-height: 120px;
   padding: 12px;
   border-radius: 12px;
   background: rgba(148, 163, 184, 0.12);
@@ -268,6 +372,12 @@ h1 {
     position: relative;
     top: auto;
     padding-bottom: 12px;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .story-visual__card {
+    height: min(70vh, 620px);
   }
 
   .story-copy {

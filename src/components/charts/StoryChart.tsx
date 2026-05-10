@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import * as d3 from 'd3';
+import { feature, mesh } from 'topojson-client';
+import worldAtlas from 'world-atlas/countries-110m.json';
 import type { HotelBookingReadyRow } from '../../lib/hotelData';
 
 type StoryChartProps = {
@@ -7,10 +10,70 @@ type StoryChartProps = {
 };
 
 export type StoryChartId =
+  | 'routes-map'
   | 'cancel-rate-by-hotel'
   | 'lead-time-by-segment'
   | 'monthly-cancel-trend'
   | 'adr-by-deposit';
+
+type RoutePoint = {
+  country: string;
+  hotel: 'Resort Hotel' | 'City Hotel';
+  trips: number;
+  origin: [number, number];
+  destination: [number, number];
+};
+
+const COUNTRY_COORDS: Record<string, [number, number]> = {
+  PRT: [-8.2, 39.5],
+  ESP: [-3.7, 40.4],
+  FRA: [2.2, 46.2],
+  GBR: [-2.5, 54.5],
+  DEU: [10.5, 51.2],
+  IRL: [-8.2, 53.4],
+  ITA: [12.5, 42.8],
+  BEL: [4.5, 50.8],
+  NLD: [5.3, 52.1],
+  CHE: [8.2, 46.8],
+  AUT: [14.5, 47.6],
+  SWE: [18.6, 60.2],
+  NOR: [8.5, 60.4],
+  DNK: [9.5, 56.1],
+  POL: [19.1, 52.1],
+  CZE: [15.3, 49.8],
+  ROU: [24.9, 45.8],
+  RUS: [37.6, 55.7],
+  UKR: [31.2, 49.0],
+  TUR: [35.2, 39.0],
+  USA: [-98.5, 39.8],
+  CAN: [-106.3, 56.1],
+  BRA: [-51.9, -14.2],
+  ARG: [-64.0, -34.5],
+  MEX: [-102.5, 23.8],
+  CHN: [104.2, 35.8],
+  JPN: [138.2, 36.2],
+  KOR: [127.8, 36.4],
+  IND: [78.9, 22.8],
+  AUS: [134.5, -25.7],
+  NZL: [172.6, -41.5],
+  ZAF: [24.7, -29.0],
+  MAR: [-6.0, 31.8],
+  DZA: [2.6, 28.0],
+  TUN: [9.5, 34.0],
+  EGY: [30.8, 26.8],
+  SAU: [45.1, 23.9],
+  ARE: [54.3, 24.3],
+};
+
+const HOTEL_DESTINATIONS: Record<RoutePoint['hotel'], [number, number]> = {
+  'City Hotel': [-9.1393, 38.7223],
+  'Resort Hotel': [-8.0, 37.1],
+};
+
+const HOTEL_LABELS: Record<RoutePoint['hotel'], string> = {
+  'City Hotel': 'Lisbon (City Hotel)',
+  'Resort Hotel': 'Algarve (Resort Hotel)',
+};
 
 type BarPoint = {
   label: string;
@@ -118,26 +181,206 @@ function getChartModel(rows: HotelBookingReadyRow[], chartId: StoryChartId): Cha
 
 export default function StoryChart({ rows, chartId }: StoryChartProps) {
   if (rows.length === 0) {
-    return <p className="story-chart__empty">No hi ha dades carregades encara.</p>;
+    return <div className="story-chart__empty" aria-label="No chart data available" />;
+  }
+
+  if (chartId === 'routes-map') {
+    return <RouteMapChart rows={rows} />;
   }
 
   const model = getChartModel(rows, chartId);
   const width = 620;
-  const height = 260;
+  const height = 520;
   const margin = { top: 20, right: 20, bottom: 56, left: 64 };
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
 
   return (
     <div className="story-chart">
-      <p className="story-chart__title">{model.title}</p>
-      <p className="story-chart__subtitle">{model.subtitle}</p>
-
       {model.kind === 'bar' ? (
         <BarChart model={model} width={width} height={height} margin={margin} innerWidth={innerWidth} innerHeight={innerHeight} />
       ) : (
         <LineChart model={model} width={width} height={height} margin={margin} innerWidth={innerWidth} innerHeight={innerHeight} />
       )}
+    </div>
+  );
+}
+
+function getRouteData(rows: HotelBookingReadyRow[]): RoutePoint[] {
+  const routeCounts = d3.rollups(
+    rows,
+    (values) => values.length,
+    (d) => d.country,
+    (d) => d.hotel,
+  );
+
+  const routes: RoutePoint[] = [];
+
+  for (const [country, byHotel] of routeCounts) {
+    const origin = COUNTRY_COORDS[country];
+    if (!origin) {
+      continue;
+    }
+
+    for (const [hotel, trips] of byHotel) {
+      if (hotel !== 'Resort Hotel' && hotel !== 'City Hotel') {
+        continue;
+      }
+
+      routes.push({
+        country,
+        hotel,
+        trips,
+        origin,
+        destination: HOTEL_DESTINATIONS[hotel],
+      });
+    }
+  }
+
+  return routes.sort((a, b) => b.trips - a.trips);
+}
+
+function RouteMapChart({ rows }: { rows: HotelBookingReadyRow[] }) {
+  const [mapView, setMapView] = useState<'world' | 'europe'>('europe');
+  const routeData = getRouteData(rows);
+
+  if (routeData.length === 0) {
+    return <div className="story-chart__empty" aria-label="No route data available" />;
+  }
+
+  const width = 620;
+  const height = 560;
+  const worldData = worldAtlas as {
+    objects: { countries: unknown };
+  };
+  const land = feature(worldData as never, worldData.objects.countries as never);
+  const boundaries = mesh(
+    worldData as never,
+    worldData.objects.countries as never,
+    (a: unknown, b: unknown) => a !== b,
+  );
+  const europeBounds = {
+    west: -11,
+    east: 57,
+    south: 22,
+    north: 58,
+  };
+  const europeFrame = {
+    type: 'Polygon' as const,
+    coordinates: [[
+      [europeBounds.west, europeBounds.south],
+      [europeBounds.east, europeBounds.south],
+      [europeBounds.east, europeBounds.north],
+      [europeBounds.west, europeBounds.north],
+      [europeBounds.west, europeBounds.south],
+    ]],
+  };
+  const europeViewport: [[number, number], [number, number]] = [
+    [8, 10],
+    [width - 8, height - 10],
+  ];
+
+  const projection =
+    mapView === 'world'
+      ? d3
+          .geoNaturalEarth1()
+          .fitExtent(
+            [
+              [10, 10],
+              [width - 10, height - 10],
+            ],
+            { type: 'Sphere' },
+          )
+      : d3
+          .geoMercator()
+          .fitExtent(europeViewport, europeFrame)
+          .clipExtent(europeViewport);
+  const geoPath = d3.geoPath(projection);
+  const graticule = d3.geoGraticule10();
+  const maxTrips = d3.max(routeData, (d) => d.trips) ?? 1;
+  const strokeWidth = d3.scaleSqrt().domain([1, maxTrips]).range([0.8, 5.2]);
+  const strokeOpacity = d3.scaleLinear().domain([1, maxTrips]).range([0.12, 0.92]);
+  const highlightThreshold = d3.quantile(routeData.map((d) => d.trips), 0.85) ?? maxTrips;
+  const portugalAreaPath = geoPath({
+    type: 'Polygon',
+    coordinates: [[
+      [-9.8, 36.8],
+      [-6.0, 36.8],
+      [-6.0, 42.2],
+      [-9.8, 42.2],
+      [-9.8, 36.8],
+    ]],
+  });
+
+  return (
+    <div className="story-chart story-chart--map">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Mapa de rutes per origen i hotel">
+        <path d={geoPath({ type: 'Sphere' }) ?? ''} className="story-map__sphere" />
+        <path d={geoPath(land as never) ?? ''} className="story-map__land" />
+        <path d={geoPath(boundaries as never) ?? ''} className="story-map__boundaries" />
+        <path d={geoPath(graticule) ?? ''} className="story-map__graticule" />
+        {portugalAreaPath && <path d={portugalAreaPath} className="story-map__portugal-focus" />}
+
+        {routeData.map((route) => {
+          const linePath = geoPath({
+            type: 'LineString',
+            coordinates: [route.origin, route.destination],
+          });
+          if (!linePath) {
+            return null;
+          }
+
+          const color = route.hotel === 'Resort Hotel' ? '#f59e0b' : '#38bdf8';
+          const isHighlighted = route.trips >= highlightThreshold;
+
+          return (
+            <path
+              key={`${route.country}-${route.hotel}`}
+              d={linePath}
+              fill="none"
+              stroke={color}
+              strokeWidth={strokeWidth(route.trips)}
+              strokeOpacity={strokeOpacity(route.trips)}
+              className={isHighlighted ? 'story-map__route--highlight' : 'story-map__route'}
+            />
+          );
+        })}
+
+        {(['City Hotel', 'Resort Hotel'] as const).map((hotel) => {
+          const [x, y] = projection(HOTEL_DESTINATIONS[hotel]) ?? [null, null];
+          if (x === null || y === null) {
+            return null;
+          }
+
+          return (
+            <g key={hotel}>
+              <circle cx={x} cy={y} r={5} className="story-map__hotel-dot" />
+              <text x={x + 8} y={y - 8} className="story-map__label">
+                {HOTEL_LABELS[hotel]}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+
+      <div className="story-map__controls" aria-label="Map zoom presets">
+        <button
+          type="button"
+          className={`story-map__preset-btn ${mapView === 'world' ? 'is-active' : ''}`}
+          onClick={() => setMapView('world')}
+          aria-pressed={mapView === 'world'}
+        >
+          World
+        </button>
+        <button
+          type="button"
+          className={`story-map__preset-btn ${mapView === 'europe' ? 'is-active' : ''}`}
+          onClick={() => setMapView('europe')}
+          aria-pressed={mapView === 'europe'}
+        >
+          Europe
+        </button>
+      </div>
     </div>
   );
 }
