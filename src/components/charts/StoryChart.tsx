@@ -14,6 +14,7 @@ export type StoryChartId =
   | 'cancel-share-overall'
   | 'cancel-by-country'
   | 'cancel-rate-by-hotel'
+  | 'cancel-rate-by-motivation'
   | 'lead-time-by-segment'
   | 'monthly-cancel-trend'
   | 'adr-by-deposit';
@@ -200,6 +201,10 @@ function getChartModel(rows: HotelBookingReadyRow[], chartId: StoryChartId): Cha
 
   if (chartId === 'cancel-by-country') {
     return getCombinedBarsLineChartModel(rows, chartId, 'country', true);
+  }
+
+  if (chartId === 'cancel-rate-by-motivation') {
+    return getCombinedBarsLineChartModel(rows, chartId, 'motivation');
   }
 
   if (chartId === 'lead-time-by-segment') {
