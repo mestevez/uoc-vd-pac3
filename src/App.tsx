@@ -229,6 +229,18 @@ const steps: StoryStep[] = [
       chartId: 'overbooking-summary-matrix',
     },
   },
+  {
+    id: 'conclusion',
+    eyebrow: '',
+    title: 'Limitacions',
+    body: 'Aquests resultats es basen en dades de dues localitzacions concretes de Portugal i no es poden generalitzar. Els patrons observats poden ser específics d’aquestes àrees i variar en altres destinacions.',
+    accent: '#7c3aed',
+    visual: {
+      kind: 'image',
+      src: 'images/data-limitations.png',
+      alt: "Il·lustració que mostra un avís de 'Dades limitades' per indicar que els resultats presentats es basen en dades específiques i no es poden generalitzar a altres contexts.",
+    },
+  },
 ];
 
 export default function App() {
