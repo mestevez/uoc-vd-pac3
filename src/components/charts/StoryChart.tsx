@@ -112,9 +112,15 @@ type BubblePoint = {
   cancelRate: number;
 };
 
+type DonutPoint = {
+  label: string;
+  value: number;
+};
+
 type ChartModel =
   | { kind: 'bar'; title: string; subtitle: string; data: BarPoint[]; format: (value: number) => string }
   | { kind: 'bar-horizontal'; title: string; subtitle: string; data: BarPoint[]; format: (value: number) => string }
+  | { kind: 'donut'; title: string; subtitle: string; data: DonutPoint[]; format: (value: number) => string }
   | { kind: 'line'; title: string; subtitle: string; data: LinePoint[]; format: (value: number) => string }
   | {
       kind: 'bar-line-dual-axis';
@@ -278,7 +284,7 @@ function getChartModel(rows: HotelBookingReadyRow[], chartId: StoryChartId): Cha
     ];
 
     return {
-      kind: 'bar-horizontal',
+      kind: 'donut',
       title: 'Proporció total de cancel·lacions',
       subtitle: 'Percentatge de reserves cancel·lades vs no cancel·lades.',
       data,
@@ -401,6 +407,15 @@ export default function StoryChart({ rows, chartId }: StoryChartProps) {
           margin={{ top: 44, right: 28, bottom: 40, left: 130 }}
           innerWidth={width - 130 - 28}
           innerHeight={height - 44 - 40}
+        />
+      ) : model.kind === 'donut' ? (
+        <DonutChart
+          model={model}
+          width={width}
+          height={height}
+          margin={{ top: 36, right: 36, bottom: 36, left: 36 }}
+          innerWidth={width - 72}
+          innerHeight={height - 72}
         />
       ) : model.kind === 'bar-line-dual-axis' ? (
         <ComboBarLineChart
@@ -671,7 +686,7 @@ function RouteMapChart({ rows, mapView }: { rows: HotelBookingReadyRow[], mapVie
     worldData.objects.countries as never,
     (a: unknown, b: unknown) => a !== b,
   );
-  const europeCenter = [5, 45];
+  const europeCenter: [number, number] = [5, 45];
   const europeScale = 650;
 
   const projection =
@@ -689,7 +704,7 @@ function RouteMapChart({ rows, mapView }: { rows: HotelBookingReadyRow[], mapVie
           .geoMercator()
             .center(europeCenter)
             .scale(europeScale)
-            .translate([width / 2, height / 2]);
+            .translate([width / 2, height / 2] as [number, number]);
 
   const geoPath = d3.geoPath(projection);
   const graticule = d3.geoGraticule10();
@@ -1172,6 +1187,83 @@ function HorizontalBarChart({ model, width, height, margin, innerWidth, innerHei
             </g>
           );
         })}
+      </g>
+    </svg>
+  );
+}
+
+function DonutChart({ model, width, height, margin, innerWidth, innerHeight }: ChartBoxProps & { model: Extract<ChartModel, { kind: 'donut' }> }) {
+  const total = d3.sum(model.data, (d) => d.value);
+  const cancelled = model.data.find((d) => d.label === 'Cancel·lades')?.value ?? 0;
+  const radius = Math.min(innerWidth, innerHeight) * 0.34;
+  const innerRadius = radius * 0.62;
+
+  const pie = d3
+    .pie<DonutPoint>()
+    .sort(null)
+    .value((d) => d.value)(model.data);
+
+  const arc = d3
+    .arc<d3.PieArcDatum<DonutPoint>>()
+    .innerRadius(innerRadius)
+    .outerRadius(radius);
+
+  const labelArc = d3
+    .arc<d3.PieArcDatum<DonutPoint>>()
+    .innerRadius(radius + 20)
+    .outerRadius(radius + 20);
+
+  const color = d3
+    .scaleOrdinal<string, string>()
+    .domain(model.data.map((d) => d.label))
+    .range(['#f87171', '#22d3ee']);
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={model.title}>
+      <g transform={`translate(${margin.left},${margin.top})`}>
+        <g transform={`translate(${innerWidth / 2},${innerHeight / 2 - 8})`}>
+          {pie.map((slice) => (
+            <path
+              key={slice.data.label}
+              d={arc(slice) ?? ''}
+              fill={color(slice.data.label)}
+              stroke="#0f172a"
+              strokeWidth={2}
+            >
+              <title>{`${slice.data.label}: ${model.format(slice.data.value)}`}</title>
+            </path>
+          ))}
+
+          {pie.map((slice) => {
+            const [x, y] = labelArc.centroid(slice);
+            return (
+              <text key={`label-${slice.data.label}`} x={x} y={y} textAnchor="middle" className="story-chart__axis-text">
+                {model.format(slice.data.value)}
+              </text>
+            );
+          })}
+
+          <text y={-8} textAnchor="middle" className="story-chart__axis-text">
+            Cancel·lades
+          </text>
+          <text y={16} textAnchor="middle" className="story-chart__value-text" style={{ fontSize: '1.35rem' }}>
+            {model.format(cancelled)}
+          </text>
+          <text y={36} textAnchor="middle" className="story-chart__axis-text">
+            {`sobre ${model.format(total)}`}
+          </text>
+        </g>
+
+        <g transform={`translate(${innerWidth / 2 - 110},${innerHeight - 16})`}>
+          {model.data.map((point, index) => (
+            <g key={`legend-${point.label}`} transform={`translate(${index * 140},0)`}>
+              <rect x={0} y={-10} width={12} height={12} rx={2} fill={color(point.label)} />
+              <text x={18} y={0} className="story-chart__axis-text">
+                {point.label}
+              </text>
+            </g>
+          ))}
+        </g>
       </g>
     </svg>
   );
