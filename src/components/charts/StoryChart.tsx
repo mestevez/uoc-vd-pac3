@@ -105,6 +105,7 @@ type ChartModel =
       data: ComboPoint[];
       leftFormat: (value: number) => string;
       rightFormat: (value: number) => string;
+      rotateXLabel: boolean;
     };
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -120,6 +121,60 @@ function makeBarModel(
 
 function byValueDesc<T extends { value: number }>(a: T, b: T): number {
   return b.value - a.value;
+}
+
+function getCombinedBarsLineChartModel(
+    rows: HotelBookingReadyRow[],
+    chartId: StoryChartId,
+    category: keyof HotelBookingReadyRow,
+    rotateXLabel?: boolean
+): ChartModel {
+  const grouped = Array.from(
+      d3.rollup(
+          rows,
+          (values) => ({
+            reservations: values.length,
+            canceled: d3.sum(values, (d) => d.isCanceled),
+          }),
+          (d) => d[category],
+      ),
+      ([label, value]) => ({
+        label,
+        reservations: value.reservations,
+        canceled: value.canceled,
+      }),
+  );
+
+  const majorCountries = grouped.filter((d) => d.reservations >= 1000);
+  const otherCountries = grouped.filter((d) => d.reservations < 1000);
+  const otherReservations = d3.sum(otherCountries, (d) => d.reservations);
+  const otherCanceled = d3.sum(otherCountries, (d) => d.canceled);
+
+  const data: ComboPoint[] = majorCountries.map((d) => ({
+    label: d.label,
+    reservations: d.reservations,
+    cancelRate: d.reservations > 0 ? (d.canceled / d.reservations) * 100 : 0,
+  }));
+
+  if (otherReservations > 0) {
+    data.push({
+      label: 'Altres',
+      reservations: otherReservations,
+      cancelRate: (otherCanceled / otherReservations) * 100,
+    });
+  }
+
+  data.sort((a, b) => b.reservations - a.reservations);
+
+  return {
+    kind: 'bar-line-dual-axis',
+    title: 'Volum de reserves i cancel·lació per país',
+    subtitle: 'Barres: volum de reserves (eix esquerre). Línia: % cancel·lació (eix dret).',
+    data,
+    leftFormat: (value) => d3.format('~s')(value),
+    rightFormat: (value) => `${value.toFixed(1)}%`,
+    rotateXLabel: rotateXLabel === true
+  };
 }
 
 function getChartModel(rows: HotelBookingReadyRow[], chartId: StoryChartId): ChartModel {
@@ -140,69 +195,11 @@ function getChartModel(rows: HotelBookingReadyRow[], chartId: StoryChartId): Cha
   }
 
   if (chartId === 'cancel-rate-by-hotel') {
-    const grouped = Array.from(
-      d3.rollup(
-        rows,
-        (values) => (d3.mean(values, (d) => d.isCanceled) ?? 0) * 100,
-        (d) => d.hotel,
-      ),
-      ([label, value]) => ({ label, value }),
-    ).sort(byValueDesc);
-
-    return makeBarModel(
-      'Taxa de cancel·lació per tipus d’hotel',
-      'Percentatge de reserves cancel·lades.',
-      grouped,
-      (value) => `${value.toFixed(1)}%`,
-    );
+    return getCombinedBarsLineChartModel(rows, chartId, 'hotel');
   }
 
   if (chartId === 'cancel-by-country') {
-    const grouped = Array.from(
-      d3.rollup(
-        rows,
-        (values) => ({
-          reservations: values.length,
-          canceled: d3.sum(values, (d) => d.isCanceled),
-        }),
-        (d) => d.country,
-      ),
-      ([label, value]) => ({
-        label,
-        reservations: value.reservations,
-        canceled: value.canceled,
-      }),
-    );
-
-    const majorCountries = grouped.filter((d) => d.reservations >= 1000);
-    const otherCountries = grouped.filter((d) => d.reservations < 1000);
-    const otherReservations = d3.sum(otherCountries, (d) => d.reservations);
-    const otherCanceled = d3.sum(otherCountries, (d) => d.canceled);
-
-    const data: ComboPoint[] = majorCountries.map((d) => ({
-      label: d.label,
-      reservations: d.reservations,
-      cancelRate: d.reservations > 0 ? (d.canceled / d.reservations) * 100 : 0,
-    }));
-
-    if (otherReservations > 0) {
-      data.push({
-        label: 'Altres',
-        reservations: otherReservations,
-        cancelRate: (otherCanceled / otherReservations) * 100,
-      });
-    }
-
-    data.sort((a, b) => b.reservations - a.reservations);
-
-    return {
-      kind: 'bar-line-dual-axis',
-      title: 'Volum de reserves i cancel·lació per país',
-      subtitle: 'Barres: volum de reserves (eix esquerre). Línia: % cancel·lació (eix dret).',
-      data,
-      leftFormat: (value) => d3.format('~s')(value),
-      rightFormat: (value) => `${value.toFixed(1)}%`,
-    };
+    return getCombinedBarsLineChartModel(rows, chartId, 'country', true);
   }
 
   if (chartId === 'lead-time-by-segment') {
@@ -615,7 +612,7 @@ function ComboBarLineChart({ model, width, height, margin, innerWidth, innerHeig
                 x={x.bandwidth() / 2}
                 y={innerHeight + 20}
                 textAnchor="middle"
-                transform={`rotate(90, ${x.bandwidth() / 2}, ${innerHeight + 20})`}
+                transform={`rotate(${model.rotateXLabel ? '90' : '0'}, ${x.bandwidth() / 2}, ${innerHeight + 20})`}
                 className="story-chart__axis-text"
               >
                 {point.label}

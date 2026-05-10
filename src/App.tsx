@@ -59,6 +59,18 @@ const steps: StoryStep[] = [
       chartId: 'cancel-by-country',
     },
   },
+  {
+    id: 'hotel-cancellations',
+    eyebrow: '',
+    title: 'Cancel·lacions per tipus d’hotel',
+    body:
+      'Les dades mostren que els hotels de ciutat concentren una part significativa del volum de reserves i de les cancel·lacions, fet que els situa com un focus rellevant de l’estudi.',
+    accent: '#ef4444',
+    visual: {
+      kind: 'chart',
+      chartId: 'cancel-rate-by-hotel',
+    },
+  },
 ];
 
 export default function App() {
