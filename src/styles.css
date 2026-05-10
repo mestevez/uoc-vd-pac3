@@ -220,6 +220,10 @@ h1 {
   font-size: 0.82rem;
 }
 
+.story-chart__axis-text--right {
+  fill: #fca5a5;
+}
+
 .story-chart__bar {
   fill: #60a5fa;
 }
@@ -245,6 +249,14 @@ h1 {
 
 .story-chart__dot {
   fill: #22d3ee;
+}
+
+.story-chart__line--cancel {
+  stroke: #f87171;
+}
+
+.story-chart__dot--cancel {
+  fill: #ef4444;
 }
 
 .story-map__sphere {

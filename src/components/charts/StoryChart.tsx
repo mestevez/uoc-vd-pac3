@@ -12,6 +12,7 @@ type StoryChartProps = {
 export type StoryChartId =
   | 'routes-map'
   | 'cancel-share-overall'
+  | 'cancel-by-country'
   | 'cancel-rate-by-hotel'
   | 'lead-time-by-segment'
   | 'monthly-cancel-trend'
@@ -87,10 +88,24 @@ type LinePoint = {
   value: number;
 };
 
+type ComboPoint = {
+  label: string;
+  reservations: number;
+  cancelRate: number;
+};
+
 type ChartModel =
   | { kind: 'bar'; title: string; subtitle: string; data: BarPoint[]; format: (value: number) => string }
   | { kind: 'bar-horizontal'; title: string; subtitle: string; data: BarPoint[]; format: (value: number) => string }
-  | { kind: 'line'; title: string; subtitle: string; data: LinePoint[]; format: (value: number) => string };
+  | { kind: 'line'; title: string; subtitle: string; data: LinePoint[]; format: (value: number) => string }
+  | {
+      kind: 'bar-line-dual-axis';
+      title: string;
+      subtitle: string;
+      data: ComboPoint[];
+      leftFormat: (value: number) => string;
+      rightFormat: (value: number) => string;
+    };
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -140,6 +155,54 @@ function getChartModel(rows: HotelBookingReadyRow[], chartId: StoryChartId): Cha
       grouped,
       (value) => `${value.toFixed(1)}%`,
     );
+  }
+
+  if (chartId === 'cancel-by-country') {
+    const grouped = Array.from(
+      d3.rollup(
+        rows,
+        (values) => ({
+          reservations: values.length,
+          canceled: d3.sum(values, (d) => d.isCanceled),
+        }),
+        (d) => d.country,
+      ),
+      ([label, value]) => ({
+        label,
+        reservations: value.reservations,
+        canceled: value.canceled,
+      }),
+    );
+
+    const majorCountries = grouped.filter((d) => d.reservations >= 1000);
+    const otherCountries = grouped.filter((d) => d.reservations < 1000);
+    const otherReservations = d3.sum(otherCountries, (d) => d.reservations);
+    const otherCanceled = d3.sum(otherCountries, (d) => d.canceled);
+
+    const data: ComboPoint[] = majorCountries.map((d) => ({
+      label: d.label,
+      reservations: d.reservations,
+      cancelRate: d.reservations > 0 ? (d.canceled / d.reservations) * 100 : 0,
+    }));
+
+    if (otherReservations > 0) {
+      data.push({
+        label: 'Altres',
+        reservations: otherReservations,
+        cancelRate: (otherCanceled / otherReservations) * 100,
+      });
+    }
+
+    data.sort((a, b) => b.reservations - a.reservations);
+
+    return {
+      kind: 'bar-line-dual-axis',
+      title: 'Volum de reserves i cancel·lació per país',
+      subtitle: 'Barres: volum de reserves (eix esquerre). Línia: % cancel·lació (eix dret).',
+      data,
+      leftFormat: (value) => d3.format('~s')(value),
+      rightFormat: (value) => `${value.toFixed(1)}%`,
+    };
   }
 
   if (chartId === 'lead-time-by-segment') {
@@ -210,8 +273,11 @@ export default function StoryChart({ rows, chartId }: StoryChartProps) {
   const width = 620;
   const height = 520;
   const margin = { top: 20, right: 20, bottom: 56, left: 64 };
+  const comboMargin = { top: 20, right: 72, bottom: 72, left: 64 };
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
+  const comboInnerWidth = width - comboMargin.left - comboMargin.right;
+  const comboInnerHeight = height - comboMargin.top - comboMargin.bottom;
 
   return (
     <div className="story-chart">
@@ -225,6 +291,15 @@ export default function StoryChart({ rows, chartId }: StoryChartProps) {
           margin={{ top: 44, right: 28, bottom: 40, left: 130 }}
           innerWidth={width - 130 - 28}
           innerHeight={height - 44 - 40}
+        />
+      ) : model.kind === 'bar-line-dual-axis' ? (
+        <ComboBarLineChart
+          model={model}
+          width={width}
+          height={height}
+          margin={comboMargin}
+          innerWidth={comboInnerWidth}
+          innerHeight={comboInnerHeight}
         />
       ) : (
         <LineChart model={model} width={width} height={height} margin={margin} innerWidth={innerWidth} innerHeight={innerHeight} />
@@ -462,15 +537,98 @@ function BarChart({ model, width, height, margin, innerWidth, innerHeight }: Cha
               />
               <text
                 x={x.bandwidth() / 2}
-                y={innerHeight + 15}
-                textAnchor="end"
-                transform={`rotate(-30, ${x.bandwidth() / 2}, ${innerHeight + 15})`}
+                y={innerHeight + 22}
+                textAnchor="middle"
+                transform={`rotate(-90, ${x.bandwidth() / 2}, ${innerHeight + 22})`}
                 className="story-chart__axis-text"
               >
                 {point.label}
               </text>
             </g>
           );
+        })}
+      </g>
+    </svg>
+  );
+}
+
+function ComboBarLineChart({ model, width, height, margin, innerWidth, innerHeight }: ChartBoxProps & { model: Extract<ChartModel, { kind: 'bar-line-dual-axis' }> }) {
+  const x = d3
+    .scaleBand<string>()
+    .domain(model.data.map((d) => d.label))
+    .range([0, innerWidth])
+    .padding(0.22);
+
+  const maxReservations = d3.max(model.data, (d) => d.reservations) ?? 0;
+  const yLeft = d3.scaleLinear().domain([0, maxReservations * 1.1]).nice().range([innerHeight, 0]);
+  const yRight = d3.scaleLinear().domain([0, 100]).range([innerHeight, 0]);
+
+  const leftTicks = yLeft.ticks(4);
+  const rightTicks = [0, 25, 50, 75, 100];
+  const lineData = d3
+    .line<ComboPoint>()
+    .x((d) => (x(d.label) ?? 0) + x.bandwidth() / 2)
+    .y((d) => yRight(d.cancelRate))(model.data);
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={model.title}>
+      <g transform={`translate(${margin.left},${margin.top})`}>
+        {leftTicks.map((tick) => (
+          <g key={`left-${tick}`} transform={`translate(0,${yLeft(tick)})`}>
+            <line x1={0} x2={innerWidth} y1={0} y2={0} className="story-chart__grid" />
+            <text x={-10} y={4} textAnchor="end" className="story-chart__axis-text">
+              {model.leftFormat(tick)}
+            </text>
+          </g>
+        ))}
+
+        {rightTicks.map((tick) => (
+          <g key={`right-${tick}`} transform={`translate(${innerWidth},${yRight(tick)})`}>
+            <text
+              x={10}
+              y={0}
+              textAnchor="start"
+              dominantBaseline="middle"
+              className="story-chart__axis-text story-chart__axis-text--right"
+            >
+              {model.rightFormat(tick)}
+            </text>
+          </g>
+        ))}
+
+        {model.data.map((point) => {
+          const xPos = x(point.label);
+          if (xPos === undefined) {
+            return null;
+          }
+
+          return (
+            <g key={point.label} transform={`translate(${xPos},0)`}>
+              <rect
+                y={yLeft(point.reservations)}
+                width={x.bandwidth()}
+                height={innerHeight - yLeft(point.reservations)}
+                rx={6}
+                className="story-chart__bar"
+              />
+              <text
+                x={x.bandwidth() / 2}
+                y={innerHeight + 20}
+                textAnchor="middle"
+                transform={`rotate(90, ${x.bandwidth() / 2}, ${innerHeight + 20})`}
+                className="story-chart__axis-text"
+              >
+                {point.label}
+              </text>
+            </g>
+          );
+        })}
+
+        {lineData && <path d={lineData} fill="none" className="story-chart__line story-chart__line--cancel" />}
+
+        {model.data.map((point) => {
+          const centerX = (x(point.label) ?? 0) + x.bandwidth() / 2;
+          return <circle key={`dot-${point.label}`} cx={centerX} cy={yRight(point.cancelRate)} r={4} className="story-chart__dot story-chart__dot--cancel" />;
         })}
       </g>
     </svg>

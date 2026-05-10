@@ -47,6 +47,18 @@ const steps: StoryStep[] = [
       chartId: 'cancel-share-overall',
     },
   },
+  {
+    id: 'country-cancellations',
+    eyebrow: '',
+    title: 'Cancel·lacions per país d’origen',
+    body:
+      'El gràfic mostra que els viatges locals concentren tant el percentatge més alt de cancel·lacions (més del 50%) com el major volum de reserves, fet que els converteix en un aspecte clau a analitzar.',
+    accent: '#ef4444',
+    visual: {
+      kind: 'chart',
+      chartId: 'cancel-by-country',
+    },
+  },
 ];
 
 export default function App() {
