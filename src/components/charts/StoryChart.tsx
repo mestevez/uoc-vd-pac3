@@ -16,9 +16,16 @@ export type StoryChartId =
   | 'cancel-rate-by-hotel'
   | 'cancel-rate-by-motivation'
   | 'cancel-rate-by-stay_length'
-  | 'lead-time-by-segment'
-  | 'monthly-cancel-trend'
-  | 'adr-by-deposit';
+  | 'cancel-rate-by-month'
+  | 'cancel-rate-by-updates'
+  | 'cancel-rate-by-room-type'
+  | 'cancel-rate-by-customer-type'
+  | 'cancel-rate-by-agent'
+  | 'cancel-rate-by-company'
+  | 'cancel-rate-by-waiting-time'
+  | 'cancel-rate-by-lead-time'
+  | 'cancel-rate-by-customer-fidelity'
+  | 'cancel-rate-by-adr';
 
 type RoutePoint = {
   country: string;
@@ -232,46 +239,44 @@ function getChartModel(rows: HotelBookingReadyRow[], chartId: StoryChartId): Cha
     return getCombinedBarsLineChartModel(rows, chartId, 'stayLength', false, undefined, ['short', 'middle', 'long']);
   }
 
-  if (chartId === 'lead-time-by-segment') {
-    const grouped = Array.from(
-      d3.rollup(rows, (values) => d3.mean(values, (d) => d.leadTime) ?? 0, (d) => d.marketSegment),
-      ([label, value]) => ({ label, value }),
-    )
-      .sort(byValueDesc)
-      .slice(0, 7);
-
-    return makeBarModel(
-      'Lead time mitjà per segment de mercat',
-      'Dies entre reserva i arribada.',
-      grouped,
-      (value) => `${value.toFixed(0)} dies`,
-    );
+  if (chartId === 'cancel-rate-by-month') {
+    return getCombinedBarsLineChartModel(rows, chartId, 'arrivalMonth', true, undefined, ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']);
   }
 
-  if (chartId === 'monthly-cancel-trend') {
-    const grouped = Array.from(
-      d3.rollup(rows, (values) => d3.mean(values, (d) => d.isCanceled) ?? 0, (d) => d.arrivalYm),
-      ([label, value]) => {
-        const [yearText, monthText] = label.split('-');
-        const year = Number(yearText);
-        const month = Number(monthText);
-        return {
-          label: `${MONTH_SHORT[month - 1] ?? monthText} ${year}`,
-          order: year * 100 + month,
-          value: value * 100,
-        };
-      },
-    )
-      .sort((a, b) => a.order - b.order)
-      .slice(-18);
+  if (chartId === 'cancel-rate-by-updates') {
+    return getCombinedBarsLineChartModel(rows, chartId, 'bookingChangesCat', false, undefined, ['none', 'little', 'many']);
+  }
 
-    return {
-      kind: 'line',
-      title: 'Evolució mensual de la cancel·lació',
-      subtitle: 'Taxa de cancel·lació al llarg del temps.',
-      data: grouped,
-      format: (value) => `${value.toFixed(1)}%`,
-    };
+  if (chartId === 'cancel-rate-by-room-type') {
+    return getCombinedBarsLineChartModel(rows, chartId, 'reservedRoomType');
+  }
+
+  if (chartId === 'cancel-rate-by-customer-type') {
+    return getCombinedBarsLineChartModel(rows, chartId, 'customerType');
+  }
+
+  if (chartId === 'cancel-rate-by-agent') {
+    return getCombinedBarsLineChartModel(rows, chartId, 'agent', true, 500);
+  }
+
+  if (chartId === 'cancel-rate-by-company') {
+    return getCombinedBarsLineChartModel(rows, chartId, 'company', true, 100);
+  }
+
+  if (chartId === 'cancel-rate-by-waiting-time') {
+    return getCombinedBarsLineChartModel(rows, chartId, 'daysInWaitingListCat', false, 0, ["none", "little", "many"]);
+  }
+
+  if (chartId === 'cancel-rate-by-lead-time') {
+    return getCombinedBarsLineChartModel(rows, chartId, 'leadTimeCat', false, 0, ["<1-month", "1-2-months", "2-6-months", ">6-months"]);
+  }
+
+  if (chartId === 'cancel-rate-by-customer-fidelity') {
+    return getCombinedBarsLineChartModel(rows, chartId, 'customerFidelity', false, 0, ["very low", "normal", "high", "very high"]);
+  }
+
+  if (chartId === 'cancel-rate-by-adr') {
+    return getCombinedBarsLineChartModel(rows, chartId, 'adrCat', false, 0, ["low", "normal", "high", "luxe"]);
   }
 
   const grouped = Array.from(
@@ -640,9 +645,9 @@ function ComboBarLineChart({ model, width, height, margin, innerWidth, innerHeig
               />
               <text
                 x={x.bandwidth() / 2}
-                y={innerHeight + 20}
-                textAnchor="middle"
-                transform={`rotate(${model.rotateXLabel ? '90' : '0'}, ${x.bandwidth() / 2}, ${innerHeight + 20})`}
+                y={innerHeight + (model.rotateXLabel ? 10 : 20)}
+                textAnchor={model.rotateXLabel ? 'start' : 'middle'}
+                transform={`rotate(${model.rotateXLabel ? '90' : '0'}, ${x.bandwidth() / 2}, ${innerHeight + (model.rotateXLabel ? 10 : 20)})`}
                 className="story-chart__axis-text"
               >
                 {point.label}

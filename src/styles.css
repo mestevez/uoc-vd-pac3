@@ -388,6 +388,13 @@ h1 {
   margin-bottom: 0;
 }
 
+.story-step__footer p {
+  max-width: 42ch;
+  color: #cbd5e1;
+  margin-bottom: 0;
+  font-size: 0.8rem;
+}
+
 @media (max-width: 900px) {
   .story-layout {
     grid-template-columns: 1fr;

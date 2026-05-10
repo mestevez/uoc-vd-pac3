@@ -19,6 +19,7 @@ type StoryStep = {
   eyebrow: string;
   title: string;
   body: string;
+  footer?: string;
   accent: string;
   visual: StoryVisual;
 };
@@ -84,7 +85,7 @@ const steps: StoryStep[] = [
     },
   },
   {
-    id: 'stay_length-cancellations',
+    id: 'stay-length-cancellations',
     eyebrow: '',
     title: 'Cancel·lacions per la durada del viatge',
     body:
@@ -93,6 +94,127 @@ const steps: StoryStep[] = [
     visual: {
       kind: 'chart',
       chartId: 'cancel-rate-by-stay_length',
+    },
+  },
+  {
+    id: 'season-cancellations',
+    eyebrow: '',
+    title: 'Cancel·lacions segons estacionalitat',
+    body:
+      "Les cancel·lacions presenten una distribució força homogènia al llarg de tot l’any.",
+    accent : '#22c55e',
+    visual: {
+      kind: 'chart',
+      chartId: 'cancel-rate-by-month',
+    },
+  },
+  {
+    id: 'updates-cancellations',
+    eyebrow: '',
+    title: 'Cancel·lacions en funció del ajustos fets a la reserva',
+    body:
+      "Les dades indiquen que les reserves amb algun tipus d’ajust tenen una menor tendència a ser cancel·lades.",
+    footer: 'Ajustos: cap (0), pocs (1–5) o molts (més de 5)',
+    accent : '#efab44',
+    visual: {
+      kind: 'chart',
+      chartId: 'cancel-rate-by-updates',
+    },
+  },
+  {
+    id: 'room-type-cancellations',
+    eyebrow: '',
+    title: "Cancel·lacions per tipus d'habitació",
+    body:
+      "El tipus d’habitació no sembla tenir un impacte rellevant en la probabilitat de cancel·lació.",
+    accent : '#22c55e',
+    visual: {
+      kind: 'chart',
+      chartId: 'cancel-rate-by-room-type',
+    },
+  },
+  {
+    id: 'customer-type-cancellations',
+    eyebrow: '',
+    title: "Cancel·lacions per tipus de client",
+    body:
+      "Encara que els clients Transient mostren una taxa de cancel·lació clarament superior, el seu elevat pes en el volum total de reserves fa que aquesta variable, per si sola, tingui una capacitat limitada per orientar decisions.",
+    accent : '#efab44',
+    visual: {
+      kind: 'chart',
+      chartId: 'cancel-rate-by-customer-type',
+    },
+  },
+  {
+    id: 'agent-cancellations',
+    eyebrow: '',
+    title: "Cancel·lacions per Agència",
+    body:
+      "El gràfic mostra que algunes agencies presenten un índex molt baix de cancel·lacions, mentre que d’altres registren valors significativament elevats. En aquest sentit, aquest factor podria ser rellevant a l’hora d’afinar l’anàlisi del risc de cancel·lació.",
+    accent : '#efab44',
+    visual: {
+      kind: 'chart',
+      chartId: 'cancel-rate-by-agent',
+    },
+  },
+  {
+    id: 'company-cancellations',
+    eyebrow: '',
+    title: "Cancel·lacions per Companyia client",
+    body:
+      "Encara que algunes companyies presenten pics puntuals de cancel·lació, la majoria de reserves no es realitzen per aquest canal, cosa que en redueix l’impacte global.",
+    accent : '#22c55e',
+    visual: {
+      kind: 'chart',
+      chartId: 'cancel-rate-by-company',
+    },
+  },
+  {
+    id: 'waiting-time-cancellations',
+    eyebrow: '',
+    title: "Cancel·lacions segons els dies en espera",
+    body:
+      "Sembla que el fet d’haver fet esperar els clients en el procés de reserva s’associa a una major taxa de cancel·lacions. Tanmateix, el nombre de reserves amb temps d’espera és molt reduït, fet que indica que aquest factor ja es troba, en gran mesura, controlat.",
+    accent : '#efab44',
+    visual: {
+      kind: 'chart',
+      chartId: 'cancel-rate-by-waiting-time',
+    },
+  },
+  {
+    id: 'lead-time-cancellations',
+    eyebrow: '',
+    title: "Cancel·lacions segons els dies d’antelació a la reserva",
+    body:
+      "Les dades mostren una tendència clara en que quan més dies d’antelació es fa la reserva, més alta és la probabilitat de cancel·lació.",
+    accent : '#ef4444',
+    visual: {
+      kind: 'chart',
+      chartId: 'cancel-rate-by-lead-time',
+    },
+  },
+  {
+    id: 'customer-fidelity-cancellations',
+    eyebrow: '',
+    title: "Cancel·lacions segons la fidelitat del client",
+    body:
+      "Els clients amb un nivell de fidelitat més alt presenten una taxa de cancel·lació clarament inferior. De fet, els clients amb un grau elevat de fidelitat mostren valors molt propers a zero.",
+    accent : '#ef4444',
+    visual: {
+      kind: 'chart',
+      chartId: 'cancel-rate-by-customer-fidelity',
+    },
+  },
+  {
+    id: 'adr-cancellations',
+    eyebrow: '',
+    title: "Cancel·lacions segons el preu de la reserva (ADR)",
+    body:
+      "El preu de la reserva no presenta una relació significativa amb les cancel·lacions.",
+    accent : '#22c55e',
+    visual: {
+      kind: 'chart',
+      chartId: 'cancel-rate-by-adr',
     },
   },
 ];
@@ -170,6 +292,9 @@ export default function App() {
               </div>
               <div className="story-step__content">
                 <p>{step.body}</p>
+              </div>
+              <div className="story-step__footer">
+                <p>{step.footer}</p>
               </div>
             </article>
           ))}

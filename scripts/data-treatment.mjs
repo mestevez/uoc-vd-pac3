@@ -264,6 +264,10 @@ async function main() {
       deposit_type: normalizeText(row.deposit_type),
       country: normalizeText(row.country),
       motivation,
+      reserved_room_type: normalizeText(row.reserved_room_type),
+      customer_type: normalizeText(row.customer_type),
+      agent: normalizeText(row.agent),
+      company: normalizeText(row.company),
     });
   }
 

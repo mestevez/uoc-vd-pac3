@@ -20,6 +20,10 @@ export type HotelBookingReadyRow = {
   depositType: string;
   country: string;
   motivation: string;
+  reservedRoomType: string;
+  customerType: string;
+  agent: string;
+  company: string;
 };
 
 const toNumber = (value: string) => {
@@ -50,6 +54,10 @@ export async function loadHotelBookingsReadyCsv(): Promise<HotelBookingReadyRow[
     depositType: row.deposit_type ?? 'Unknown',
     country: row.country ?? 'Unknown',
     motivation: row.motivation ?? 'Unknown',
+    reservedRoomType: row.reserved_room_type ?? 'Unknown',
+    customerType: row.customer_type ?? 'Unknown',
+    agent: row.agent ?? 'Unknown',
+    company: row.company ?? 'Unknown',
   }));
 }
 
