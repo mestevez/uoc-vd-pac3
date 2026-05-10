@@ -47,67 +47,6 @@ const steps: StoryStep[] = [
       chartId: 'cancel-share-overall',
     },
   },
-  {
-    id: 'intro-risk',
-    eyebrow: 'Pas 03',
-    title: 'Per que cal anticipar cancel·lacions',
-    body:
-      'Quan hi ha moltes reserves flexibles, una part important es pot cancel·lar en els dies previs i desajustar la previsio docupacio.',
-    accent: '#6366f1',
-    visual: {
-      kind: 'image',
-      src: 'images/intro/cancellation-risk.svg',
-      alt: 'Indicador de risc de cancel·lacio sobre reserves futures.',
-    },
-  },
-  {
-    id: 'focus',
-    eyebrow: 'Pas 04',
-    title: 'Segmentar ajuda a predir millor',
-    body:
-      'No tots els canals de venda es comporten igual: alguns reserven amb molta antelació i cancel·len més sovint.',
-    accent: '#0ea5e9',
-    visual: {
-      kind: 'chart',
-      chartId: 'cancel-rate-by-hotel',
-    },
-  },
-  {
-    id: 'respond',
-    eyebrow: 'Pas 05',
-    title: 'La temporalitat també importa',
-    body:
-      'L’evolució mensual de les cancel·lacions permet detectar períodes de més risc i anticipar decisions d’inventari.',
-    accent: '#f97316',
-    visual: {
-      kind: 'chart',
-      chartId: 'monthly-cancel-trend',
-    },
-  },
-  {
-    id: 'lead-time',
-    eyebrow: 'Pas 06',
-    title: 'El lead time dona pistes addicionals',
-    body:
-      'Els segments que reserven amb mes antelacio poden reaccionar de forma diferent davant canvis de preu o condicions.',
-    accent: '#06b6d4',
-    visual: {
-      kind: 'chart',
-      chartId: 'lead-time-by-segment',
-    },
-  },
-  {
-    id: 'finish',
-    eyebrow: 'Pas 07',
-    title: 'Cap a una estratègia d’overbooking informada',
-    body:
-      'Els patrons de dipòsit i preu mitjà (ADR) poden guiar polítiques d’overbooking més precises i menys arriscades.',
-    accent: '#22c55e',
-    visual: {
-      kind: 'chart',
-      chartId: 'adr-by-deposit',
-    },
-  },
 ];
 
 export default function App() {
