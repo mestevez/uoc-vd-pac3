@@ -6,6 +6,12 @@ export type HotelBookingReadyRow = {
   leadTime: number;
   adr: number;
   staysTotalNights: number;
+  stayLength: string;
+  bookingChangesCat: string;
+  daysInWaitingListCat: string;
+  customerFidelity: string;
+  leadTimeCat: string;
+  adrCat: string;
   arrivalYear: number;
   arrivalMonth: string;
   arrivalMonthIndex: number;
@@ -13,6 +19,7 @@ export type HotelBookingReadyRow = {
   marketSegment: string;
   depositType: string;
   country: string;
+  motivation: string;
 };
 
 const toNumber = (value: string) => {
@@ -29,6 +36,12 @@ export async function loadHotelBookingsReadyCsv(): Promise<HotelBookingReadyRow[
     leadTime: toNumber(row.lead_time ?? '0'),
     adr: toNumber(row.adr ?? '0'),
     staysTotalNights: toNumber(row.stays_total_nights ?? '0'),
+    stayLength: row.stay_length ?? 'Unknown',
+    bookingChangesCat: row.booking_changes_cat ?? 'Unknown',
+    daysInWaitingListCat: row.days_in_waiting_list_cat ?? 'Unknown',
+    customerFidelity: row.customer_fidelity ?? 'Unknown',
+    leadTimeCat: row.lead_time_cat ?? 'Unknown',
+    adrCat: row.adr_cat ?? 'Unknown',
     arrivalYear: toNumber(row.arrival_year ?? '0'),
     arrivalMonth: row.arrival_month ?? 'Unknown',
     arrivalMonthIndex: toNumber(row.arrival_month_index ?? '0'),
@@ -36,6 +49,7 @@ export async function loadHotelBookingsReadyCsv(): Promise<HotelBookingReadyRow[
     marketSegment: row.market_segment ?? 'Unknown',
     depositType: row.deposit_type ?? 'Unknown',
     country: row.country ?? 'Unknown',
+    motivation: row.motivation ?? 'Unknown',
   }));
 }
 

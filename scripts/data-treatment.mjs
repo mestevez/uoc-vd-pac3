@@ -42,6 +42,138 @@ const toMonthIndex = (value) => {
 
 const pad2 = (value) => String(value).padStart(2, '0');
 
+const toRWeekday = (year, monthIndex, day) => {
+  if (year === null || monthIndex === null || day === null) {
+    return null;
+  }
+
+  const date = new Date(Date.UTC(year, monthIndex - 1, day));
+  const jsWeekday = date.getUTCDay();
+  return jsWeekday + 1;
+};
+
+const deriveMotivation = ({
+  staysWeekend,
+  staysWeek,
+  children,
+  babies,
+  arrivalRWeekday,
+}) => {
+  if (staysWeekend === 0 && children === 0 && babies === 0) {
+    return 'work';
+  }
+
+  if (staysWeek === 0) {
+    return 'weekend';
+  }
+
+  if (staysWeek === 1 && arrivalRWeekday === 6) {
+    return 'weekend';
+  }
+
+  if (staysWeek === 5 && (staysWeekend === 3 || staysWeekend === 4)) {
+    return 'package';
+  }
+
+  if (staysWeek <= 5 && staysWeekend < 3 && children === 0 && babies === 0) {
+    return 'work+rest';
+  }
+
+  if (children > 0 || babies > 0) {
+    return 'familiy';
+  }
+
+  return 'rest';
+};
+
+const deriveStayLength = (staysTotalNights) => {
+  if (staysTotalNights > 5) {
+    return 'long';
+  }
+
+  if (staysTotalNights > 2) {
+    return 'middle';
+  }
+
+  return 'short';
+};
+
+const deriveBookingChangesCat = (bookingChanges) => {
+  if (bookingChanges > 5) {
+    return 'many';
+  }
+
+  if (bookingChanges > 0) {
+    return 'little';
+  }
+
+  return 'none';
+};
+
+const deriveDaysInWaitingListCat = (daysInWaitingList) => {
+  if (daysInWaitingList > 30) {
+    return 'many';
+  }
+
+  if (daysInWaitingList > 0) {
+    return 'little';
+  }
+
+  return 'none';
+};
+
+const deriveCustomerFidelity = ({
+  isRepeatedGuest,
+  previousCancellations,
+  previousBookingsNotCanceled,
+}) => {
+  if (isRepeatedGuest === 0) {
+    return 'normal';
+  }
+
+  if (previousCancellations > 0) {
+    return 'very low';
+  }
+
+  if (previousBookingsNotCanceled > 0) {
+    return 'very high';
+  }
+
+  return 'high';
+};
+
+const deriveLeadTimeCat = (leadTime) => {
+  if (leadTime > 6 * 30) {
+    return '>6-months';
+  }
+
+  if (leadTime > 2 * 60) {
+    return '2-6-months';
+  }
+
+  if (leadTime > 1 * 60) {
+    return '1-2-months';
+  }
+
+  return '<1-month';
+};
+
+const deriveAdrCat = (adr) => {
+  if (adr > 250) {
+    return 'luxe';
+  }
+
+  if (adr > 150) {
+    return 'high';
+  }
+
+  if (adr > 80) {
+    return 'normal';
+  }
+
+  return 'low';
+};
+
 async function main() {
   const rawCsv = await fs.readFile(inputPath, 'utf8');
   const parsedRows = csvParse(rawCsv);
@@ -52,6 +184,11 @@ async function main() {
   for (const row of parsedRows) {
     const isCanceled = toNumber(row.is_canceled);
     const leadTime = toNumber(row.lead_time);
+    const bookingChanges = toNumber(row.booking_changes) ?? 0;
+    const daysInWaitingList = toNumber(row.days_in_waiting_list) ?? 0;
+    const isRepeatedGuest = toNumber(row.is_repeated_guest) ?? 0;
+    const previousCancellations = toNumber(row.previous_cancellations) ?? 0;
+    const previousBookingsNotCanceled = toNumber(row.previous_bookings_not_canceled) ?? 0;
     const adr = toNumber(row.adr);
     const staysWeekend = toNumber(row.stays_in_weekend_nights);
     const staysWeek = toNumber(row.stays_in_week_nights);
@@ -61,6 +198,7 @@ async function main() {
     const arrivalYear = toNumber(row.arrival_date_year);
     const arrivalDay = toNumber(row.arrival_date_day_of_month);
     const arrivalMonthIndex = toMonthIndex(row.arrival_date_month);
+    const arrivalRWeekday = toRWeekday(arrivalYear, arrivalMonthIndex, arrivalDay);
     const staysTotalNights =
       staysWeekend === null || staysWeek === null ? null : staysWeekend + staysWeek;
     const totalGuests = adults === null || babies === null ? null : adults + children + babies;
@@ -83,6 +221,23 @@ async function main() {
       arrivalYear !== null && arrivalMonthIndex !== null
         ? `${arrivalYear}-${pad2(arrivalMonthIndex)}`
         : 'Unknown';
+    const motivation = deriveMotivation({
+      staysWeekend,
+      staysWeek,
+      children,
+      babies,
+      arrivalRWeekday,
+    });
+    const stayLength = deriveStayLength(staysTotalNights);
+    const bookingChangesCat = deriveBookingChangesCat(bookingChanges);
+    const daysInWaitingListCat = deriveDaysInWaitingListCat(daysInWaitingList);
+    const customerFidelity = deriveCustomerFidelity({
+      isRepeatedGuest,
+      previousCancellations,
+      previousBookingsNotCanceled,
+    });
+    const leadTimeCat = deriveLeadTimeCat(leadTime ?? 0);
+    const adrCat = deriveAdrCat(adr);
 
     cleanedRows.push({
       hotel: normalizeText(row.hotel),
@@ -90,6 +245,12 @@ async function main() {
       lead_time: leadTime,
       adr,
       stays_total_nights: staysTotalNights,
+      stay_length: stayLength,
+      booking_changes_cat: bookingChangesCat,
+      days_in_waiting_list_cat: daysInWaitingListCat,
+      customer_fidelity: customerFidelity,
+      lead_time_cat: leadTimeCat,
+      adr_cat: adrCat,
       adults,
       children,
       babies,
@@ -102,6 +263,7 @@ async function main() {
       market_segment: normalizeText(row.market_segment),
       deposit_type: normalizeText(row.deposit_type),
       country: normalizeText(row.country),
+      motivation,
     });
   }
 
