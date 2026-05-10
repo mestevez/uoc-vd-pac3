@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { feature, mesh } from 'topojson-client';
 import worldAtlas from 'world-atlas/countries-110m.json';
@@ -25,7 +25,8 @@ export type StoryChartId =
   | 'cancel-rate-by-waiting-time'
   | 'cancel-rate-by-lead-time'
   | 'cancel-rate-by-customer-fidelity'
-  | 'cancel-rate-by-adr';
+  | 'cancel-rate-by-adr'
+  | 'overbooking-summary-matrix';
 
 type RoutePoint = {
   country: string;
@@ -103,6 +104,13 @@ type ComboPoint = {
   cancelRate: number;
 };
 
+type BubblePoint = {
+  hotel: string;
+  motivation: string;
+  reservations: number;
+  cancelRate: number;
+};
+
 type ChartModel =
   | { kind: 'bar'; title: string; subtitle: string; data: BarPoint[]; format: (value: number) => string }
   | { kind: 'bar-horizontal'; title: string; subtitle: string; data: BarPoint[]; format: (value: number) => string }
@@ -115,6 +123,16 @@ type ChartModel =
       leftFormat: (value: number) => string;
       rightFormat: (value: number) => string;
       rotateXLabel: boolean;
+    }
+  | {
+      kind: 'bubble-matrix';
+      title: string;
+      subtitle: string;
+      xLabel: string;
+      yLabel: string;
+      xDomain: string[];
+      yDomain: string[];
+      data: BubblePoint[];
     };
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -150,7 +168,7 @@ function getCombinedBarsLineChartModel(
           (d) => d[category],
       ),
       ([label, value]) => ({
-        label,
+        label: String(label),
         reservations: value.reservations,
         canceled: value.canceled,
       }),
@@ -203,6 +221,50 @@ function getCombinedBarsLineChartModel(
     leftFormat: (value) => d3.format('~s')(value),
     rightFormat: (value) => `${value.toFixed(1)}%`,
     rotateXLabel: rotateXLabel === true
+  };
+}
+
+function getOverbookingSummaryMatrixModel(rows: HotelBookingReadyRow[]): Extract<ChartModel, { kind: 'bubble-matrix' }> {
+  const grouped = d3.rollups(
+    rows,
+    (values) => ({
+      reservations: values.length,
+      canceled: d3.sum(values, (d) => d.isCanceled),
+    }),
+    (d) => d.hotel,
+    (d) => d.motivation,
+  );
+
+  const data: BubblePoint[] = [];
+  for (const [hotel, motivationGroups] of grouped) {
+    for (const [motivation, stats] of motivationGroups) {
+      data.push({
+        hotel,
+        motivation,
+        reservations: stats.reservations,
+        cancelRate: stats.reservations > 0 ? (stats.canceled / stats.reservations) * 100 : 0,
+      });
+    }
+  }
+
+  const xDomain = d3
+    .rollups(rows, (values) => values.length, (d) => d.motivation)
+    .sort((a, b) => b[1] - a[1])
+    .map(([motivation]) => motivation);
+
+  const preferredHotelOrder = ['City Hotel', 'Resort Hotel'];
+  const presentHotels = new Set(rows.map((d) => d.hotel));
+  const yDomain = preferredHotelOrder.filter((hotel) => presentHotels.has(hotel));
+
+  return {
+    kind: 'bubble-matrix',
+    title: 'Resum de risc per hotel i motivació',
+    subtitle: 'Color: taxa de cancel·lació. Mida: volum de reserves.',
+    xLabel: 'Motivació del viatge',
+    yLabel: "Tipus d'hotel",
+    xDomain,
+    yDomain,
+    data,
   };
 }
 
@@ -279,6 +341,10 @@ function getChartModel(rows: HotelBookingReadyRow[], chartId: StoryChartId): Cha
     return getCombinedBarsLineChartModel(rows, chartId, 'adrCat', false, 0, ["low", "normal", "high", "luxe"]);
   }
 
+  if (chartId === 'overbooking-summary-matrix') {
+    return getOverbookingSummaryMatrixModel(rows);
+  }
+
   const grouped = Array.from(
     d3.rollup(rows, (values) => d3.mean(values, (d) => d.adr) ?? 0, (d) => d.depositType),
     ([label, value]) => ({ label, value }),
@@ -301,6 +367,10 @@ export default function StoryChart({ rows, chartId }: StoryChartProps) {
     return <RouteMapChart rows={rows} />;
   }
 
+  if (chartId === 'overbooking-summary-matrix') {
+    return <OverbookingSummaryMatrixWithFilters rows={rows} />;
+  }
+
   const model = getChartModel(rows, chartId);
   const width = 620;
   const height = 520;
@@ -310,6 +380,9 @@ export default function StoryChart({ rows, chartId }: StoryChartProps) {
   const innerHeight = height - margin.top - margin.bottom;
   const comboInnerWidth = width - comboMargin.left - comboMargin.right;
   const comboInnerHeight = height - comboMargin.top - comboMargin.bottom;
+  const matrixMargin = { top: 56, right: 28, bottom: 114, left: 148 };
+  const matrixInnerWidth = width - matrixMargin.left - matrixMargin.right;
+  const matrixInnerHeight = height - matrixMargin.top - matrixMargin.bottom;
 
   return (
     <div className="story-chart">
@@ -333,8 +406,209 @@ export default function StoryChart({ rows, chartId }: StoryChartProps) {
           innerWidth={comboInnerWidth}
           innerHeight={comboInnerHeight}
         />
+      ) : model.kind === 'bubble-matrix' ? (
+        <BubbleMatrixChart
+          model={model}
+          width={width}
+          height={height}
+          margin={matrixMargin}
+          innerWidth={matrixInnerWidth}
+          innerHeight={matrixInnerHeight}
+        />
       ) : (
         <LineChart model={model} width={width} height={height} margin={margin} innerWidth={innerWidth} innerHeight={innerHeight} />
+      )}
+    </div>
+  );
+}
+
+function OverbookingSummaryMatrixWithFilters({ rows }: { rows: HotelBookingReadyRow[] }) {
+  const width = 620;
+  const height = 520;
+  const margin = { top: 56, right: 28, bottom: 114, left: 148 };
+  const innerWidth = width - margin.left - margin.right;
+  const innerHeight = height - margin.top - margin.bottom;
+
+  const fidelityOrder = ['very low', 'normal', 'high', 'very high'];
+  const leadTimeOrder = ['<1-month', '1-2-months', '2-6-months', '>6-months'];
+
+  const fidelityValues = useMemo(() => {
+    const uniques = Array.from(new Set(rows.map((d) => d.customerFidelity)));
+    return uniques.sort((a, b) => {
+      const aIndex = fidelityOrder.indexOf(a);
+      const bIndex = fidelityOrder.indexOf(b);
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  }, [rows]);
+
+  const leadTimeValues = useMemo(() => {
+    const uniques = Array.from(new Set(rows.map((d) => d.leadTimeCat)));
+    return uniques.sort((a, b) => {
+      const aIndex = leadTimeOrder.indexOf(a);
+      const bIndex = leadTimeOrder.indexOf(b);
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  }, [rows]);
+
+  const countryOptions = useMemo(() => {
+    const volumes = d3.rollups(rows, (values) => values.length, (d) => d.country);
+    volumes.sort((a, b) => b[1] - a[1]);
+    const major = volumes.filter(([, count]) => count >= 1000).map(([country]) => country);
+    const hasOthers = volumes.some(([, count]) => count < 1000);
+    return { major, hasOthers };
+  }, [rows]);
+
+  const [selectedCountry, setSelectedCountry] = useState<string>('All');
+  const [selectedFidelityValues, setSelectedFidelityValues] = useState<string[] | null>(null);
+  const [selectedLeadTimeValues, setSelectedLeadTimeValues] = useState<string[] | null>(null);
+
+  const activeFidelityValues = useMemo(() => {
+    if (selectedFidelityValues === null) {
+      return fidelityValues;
+    }
+    const validSelections = selectedFidelityValues.filter((value) => fidelityValues.includes(value));
+    return validSelections;
+  }, [fidelityValues, selectedFidelityValues]);
+
+  const activeFidelitySet = useMemo(() => new Set(activeFidelityValues), [activeFidelityValues]);
+
+  const activeLeadTimeValues = useMemo(() => {
+    if (selectedLeadTimeValues === null) {
+      return leadTimeValues;
+    }
+    const validSelections = selectedLeadTimeValues.filter((value) => leadTimeValues.includes(value));
+    return validSelections;
+  }, [leadTimeValues, selectedLeadTimeValues]);
+
+  const activeLeadTimeSet = useMemo(() => new Set(activeLeadTimeValues), [activeLeadTimeValues]);
+
+  const filteredRows = useMemo(() => {
+    const majorCountrySet = new Set(countryOptions.major);
+    return rows.filter((row) => {
+      if (selectedCountry === 'Others') {
+        if (majorCountrySet.has(row.country)) return false;
+      } else if (selectedCountry !== 'All') {
+        if (row.country !== selectedCountry) return false;
+      }
+      if (!activeFidelitySet.has(row.customerFidelity)) return false;
+      if (!activeLeadTimeSet.has(row.leadTimeCat)) return false;
+      return true;
+    });
+  }, [rows, selectedCountry, countryOptions.major, activeFidelitySet, activeLeadTimeSet]);
+
+  const globalReservationExtent = useMemo((): [number, number] => {
+    const grouped = d3.rollups(
+      rows,
+      (values) => values.length,
+      (d) => d.hotel,
+      (d) => d.motivation,
+    );
+    const allCounts = grouped.flatMap(([, motivations]) => motivations.map(([, count]) => count));
+    return [d3.min(allCounts) ?? 0, d3.max(allCounts) ?? 1];
+  }, [rows]);
+
+  const model = getOverbookingSummaryMatrixModel(filteredRows);
+
+  const toggleFidelity = (fidelity: string) => {
+    setSelectedFidelityValues((previous) => {
+      const next = new Set(previous ?? fidelityValues);
+      if (next.has(fidelity)) {
+        next.delete(fidelity);
+      } else {
+        next.add(fidelity);
+      }
+      return fidelityValues.filter((value) => next.has(value));
+    });
+  };
+
+  const toggleLeadTime = (leadTime: string) => {
+    setSelectedLeadTimeValues((previous) => {
+      const next = new Set(previous ?? leadTimeValues);
+      if (next.has(leadTime)) {
+        next.delete(leadTime);
+      } else {
+        next.add(leadTime);
+      }
+      return leadTimeValues.filter((value) => next.has(value));
+    });
+  };
+
+  return (
+    <div className="story-chart">
+      <div className="story-chart__filters">
+        <div className="story-chart__filters-row">
+          <label htmlFor="country-filter" className="story-chart__filters-label">
+            País d'origen:
+          </label>
+          <select
+            id="country-filter"
+            className="story-chart__filter-select"
+            value={selectedCountry}
+            onChange={(e) => setSelectedCountry(e.target.value)}
+          >
+            <option value="All">Tots els països</option>
+            {countryOptions.major.map((country) => (
+              <option key={country} value={country}>{country}</option>
+            ))}
+            {countryOptions.hasOthers && <option value="Others">Altres</option>}
+          </select>
+        </div>
+
+        <div className="story-chart__filters-row" role="group" aria-label="Filtrar per fidelitat del client">
+          <span className="story-chart__filters-label">Fidelitat del client:</span>
+          {fidelityValues.map((value) => {
+            const isActive = activeFidelitySet.has(value);
+            return (
+              <button
+                key={value}
+                type="button"
+                className={`story-chart__filter-btn ${isActive ? 'is-active' : ''}`}
+                onClick={() => toggleFidelity(value)}
+                aria-pressed={isActive}
+              >
+                {value}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="story-chart__filters-row" role="group" aria-label="Filtrar per antelacio de la reserva">
+          <span className="story-chart__filters-label">Antelació de la reserva:</span>
+          {leadTimeValues.map((value) => {
+            const isActive = activeLeadTimeSet.has(value);
+            return (
+              <button
+                key={value}
+                type="button"
+                className={`story-chart__filter-btn ${isActive ? 'is-active' : ''}`}
+                onClick={() => toggleLeadTime(value)}
+                aria-pressed={isActive}
+              >
+                {value}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {filteredRows.length === 0 ? (
+        <div className="story-chart__empty" aria-label="No chart data available for selected customer fidelity filters" />
+      ) : (
+        <BubbleMatrixChart
+          model={model}
+          width={width}
+          height={height}
+          margin={margin}
+          innerWidth={innerWidth}
+          innerHeight={innerHeight}
+          reservationExtent={globalReservationExtent}
+        />
       )}
     </div>
   );
@@ -663,6 +937,169 @@ function ComboBarLineChart({ model, width, height, margin, innerWidth, innerHeig
           const centerX = (x(point.label) ?? 0) + x.bandwidth() / 2;
           return <circle key={`dot-${point.label}`} cx={centerX} cy={yRight(point.cancelRate)} r={4} className="story-chart__dot story-chart__dot--cancel" />;
         })}
+      </g>
+    </svg>
+  );
+}
+
+function BubbleMatrixChart({ model, width, height, margin, innerWidth, innerHeight, reservationExtent }: ChartBoxProps & { model: Extract<ChartModel, { kind: 'bubble-matrix' }>; reservationExtent?: [number, number] }) {
+  const x = d3
+    .scaleBand<string>()
+    .domain(model.xDomain)
+    .range([0, innerWidth])
+    .padding(0.24);
+
+  const y = d3
+    .scaleBand<string>()
+    .domain(model.yDomain)
+    .range([0, innerHeight])
+    .padding(0.28);
+
+  const minReservations = reservationExtent?.[0] ?? (d3.min(model.data, (d) => d.reservations) ?? 0);
+  const maxReservations = reservationExtent?.[1] ?? (d3.max(model.data, (d) => d.reservations) ?? 1);
+  const sizeMin = 8;
+  const sizeMax = 32;
+  const radiusScale =
+    minReservations === maxReservations
+      ? () => (sizeMin + sizeMax) / 2
+      : d3.scaleSqrt().domain([minReservations, maxReservations]).range([sizeMin, sizeMax]);
+  const getRadius = (reservations: number) => radiusScale(reservations);
+
+  const color = d3
+    .scaleLinear<string>()
+    .domain([0, 30, 80])
+    .range(['#22c55e', '#facc15', '#ef4444'])
+    .clamp(true);
+
+  const gradientId = 'cancel-rate-gradient';
+  const legendStops = [0, 30, 60, 100];
+  const legendX = d3.scaleLinear().domain([0, 100]).range([0, 140]);
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={model.title}>
+      <defs>
+        <linearGradient id={gradientId} x1="0%" x2="100%" y1="0%" y2="0%">
+          {legendStops.map((stop) => (
+            <stop key={stop} offset={`${stop}%`} stopColor={color(stop)} />
+          ))}
+        </linearGradient>
+      </defs>
+
+      <g transform={`translate(${margin.left},${margin.top})`}>
+        {model.yDomain.map((hotel) => {
+          const yPos = y(hotel);
+          if (yPos === undefined) {
+            return null;
+          }
+
+          return (
+            <line
+              key={`h-grid-${hotel}`}
+              x1={0}
+              x2={innerWidth}
+              y1={yPos + y.bandwidth() / 2}
+              y2={yPos + y.bandwidth() / 2}
+              className="story-chart__grid"
+            />
+          );
+        })}
+
+        {model.xDomain.map((motivation) => {
+          const xPos = x(motivation);
+          if (xPos === undefined) {
+            return null;
+          }
+
+          return (
+            <line
+              key={`v-grid-${motivation}`}
+              x1={xPos + x.bandwidth() / 2}
+              x2={xPos + x.bandwidth() / 2}
+              y1={0}
+              y2={innerHeight}
+              className="story-chart__grid"
+            />
+          );
+        })}
+
+        {model.yDomain.map((hotel) => {
+          const yPos = y(hotel);
+          if (yPos === undefined) {
+            return null;
+          }
+
+          return (
+            <text key={`y-label-${hotel}`} x={-12} y={yPos + y.bandwidth() / 2 + 4} textAnchor="end" className="story-chart__axis-text">
+              {hotel}
+            </text>
+          );
+        })}
+
+        {model.xDomain.map((motivation) => {
+          const xPos = x(motivation);
+          if (xPos === undefined) {
+            return null;
+          }
+
+          return (
+            <text
+              key={`x-label-${motivation}`}
+              x={xPos + x.bandwidth() / 2}
+              y={innerHeight + 12}
+              textAnchor="start"
+              transform={`rotate(35, ${xPos + x.bandwidth() / 2}, ${innerHeight + 12})`}
+              className="story-chart__axis-text"
+            >
+              {motivation}
+            </text>
+          );
+        })}
+
+        {model.data.map((point) => {
+          const xPos = x(point.motivation);
+          const yPos = y(point.hotel);
+          if (xPos === undefined || yPos === undefined) {
+            return null;
+          }
+
+          return (
+            <circle
+              key={`${point.hotel}-${point.motivation}`}
+              cx={xPos + x.bandwidth() / 2}
+              cy={yPos + y.bandwidth() / 2}
+              r={getRadius(point.reservations)}
+              fill={color(point.cancelRate)}
+              className="story-chart__bubble"
+            >
+              <title>
+                {`${point.hotel} - ${point.motivation}: ${d3.format(',')(point.reservations)} reserves, ${point.cancelRate.toFixed(1)}% cancel·lació`}
+              </title>
+            </circle>
+          );
+        })}
+
+        <text x={innerWidth / 2} y={innerHeight + 88} textAnchor="middle" className="story-chart__axis-text">
+          {model.xLabel}
+        </text>
+
+        <text
+          x={-innerHeight / 2}
+          y={-108}
+          textAnchor="middle"
+          transform="rotate(-90)"
+          className="story-chart__axis-text"
+        >
+          {model.yLabel}
+        </text>
+
+        <g transform={`translate(${Math.max(0, innerWidth - 150)}, ${Math.max(0, innerHeight - 400)})`}>
+          <rect x={0} y={0} width={140} height={10} rx={0} fill={`url(#${gradientId})`} />
+          <text x={0} y={24} className="story-chart__axis-text">0%</text>
+          <text x={legendX(30)} y={24} textAnchor="middle" className="story-chart__axis-text">30%</text>
+          <text x={legendX(60)} y={24} textAnchor="middle" className="story-chart__axis-text">80%</text>
+          <text x={legendX(100)} y={24} textAnchor="end" className="story-chart__axis-text">{'>=80%'}</text>
+          <text x={70} y={40} textAnchor="middle" className="story-chart__axis-text">Taxa de cancel·lació</text>
+        </g>
       </g>
     </svg>
   );

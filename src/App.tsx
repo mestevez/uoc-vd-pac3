@@ -217,6 +217,18 @@ const steps: StoryStep[] = [
       chartId: 'cancel-rate-by-adr',
     },
   },
+  {
+    id: 'overbooking-summary',
+    eyebrow: '',
+    title: 'Definició d\'un overbooking amb risc controlat',
+    body:
+      'Combinant els factors de més risc, com la procedència i el motiu del viatge, amb els que ofereixen més seguretat, com la fidelitat, i la capacitat real dels hotels i l\'estat actual de les reserves, es pot estimar quin nivell d\'overbooking oferir de manera informada.',
+    accent: '#7c3aed',
+    visual: {
+      kind: 'chart',
+      chartId: 'overbooking-summary-matrix',
+    },
+  },
 ];
 
 export default function App() {
