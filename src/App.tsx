@@ -26,14 +26,25 @@ type StoryStep = {
 
 const steps: StoryStep[] = [
   {
-    id: 'intro-context',
+    id: 'intro-world',
     eyebrow: '',
-    title: 'Portugal, destinacio clau',
-    body: 'Portugal és una destinació turística molt atractiva, amb un gran volum de viatges locals i l’arribada de viatgers de molts països, amb interessos molt diversos.',
+    title: 'Portugal, destinació clau',
+    body: 'Portugal és una destinació turística molt atractiva, que rep viatgers de molts països i amb interessos molt diversos.',
     accent: '#7c3aed',
     visual: {
       kind: 'chart',
-      chartId: 'routes-map',
+      chartId: 'routes-map-world',
+    },
+  },
+  {
+    id: 'intro-local',
+    eyebrow: '',
+    title: 'Tràfic intern',
+    body: 'Així mateix, inclou un volum important de viatges locals.',
+    accent: '#7c3aed',
+    visual: {
+      kind: 'chart',
+      chartId: 'routes-map-local',
     },
   },
   {

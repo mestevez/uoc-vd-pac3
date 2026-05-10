@@ -10,7 +10,8 @@ type StoryChartProps = {
 };
 
 export type StoryChartId =
-  | 'routes-map'
+  | 'routes-map-world'
+  | 'routes-map-local'
   | 'cancel-share-overall'
   | 'cancel-by-country'
   | 'cancel-rate-by-hotel'
@@ -363,8 +364,12 @@ export default function StoryChart({ rows, chartId }: StoryChartProps) {
     return <div className="story-chart__empty" aria-label="No chart data available" />;
   }
 
-  if (chartId === 'routes-map') {
-    return <RouteMapChart rows={rows} />;
+  if (chartId === 'routes-map-world') {
+    return <RouteMapChart rows={rows} mapView="world" />;
+  }
+
+  if (chartId === 'routes-map-local') {
+    return <RouteMapChart rows={rows} mapView="europe" />;
   }
 
   if (chartId === 'overbooking-summary-matrix') {
@@ -648,8 +653,7 @@ function getRouteData(rows: HotelBookingReadyRow[]): RoutePoint[] {
   return routes.sort((a, b) => b.trips - a.trips);
 }
 
-function RouteMapChart({ rows }: { rows: HotelBookingReadyRow[] }) {
-  const [mapView, setMapView] = useState<'world' | 'europe'>('europe');
+function RouteMapChart({ rows, mapView }: { rows: HotelBookingReadyRow[], mapView: 'world' | 'europe' }) {
   const routeData = getRouteData(rows);
 
   if (routeData.length === 0) {
@@ -667,58 +671,32 @@ function RouteMapChart({ rows }: { rows: HotelBookingReadyRow[] }) {
     worldData.objects.countries as never,
     (a: unknown, b: unknown) => a !== b,
   );
-  const europeBounds = {
-    west: -11,
-    east: 57,
-    south: 22,
-    north: 58,
-  };
-  const europeFrame = {
-    type: 'Polygon' as const,
-    coordinates: [[
-      [europeBounds.west, europeBounds.south],
-      [europeBounds.east, europeBounds.south],
-      [europeBounds.east, europeBounds.north],
-      [europeBounds.west, europeBounds.north],
-      [europeBounds.west, europeBounds.south],
-    ]],
-  };
-  const europeViewport: [[number, number], [number, number]] = [
-    [8, 10],
-    [width - 8, height - 10],
-  ];
+  const europeCenter = [5, 45];
+  const europeScale = 650;
 
   const projection =
     mapView === 'world'
       ? d3
-          .geoNaturalEarth1()
+          .geoAzimuthalEqualArea()
           .fitExtent(
             [
-              [10, 10],
-              [width - 10, height - 10],
+              [0, 0],
+              [width, height],
             ],
             { type: 'Sphere' },
           )
       : d3
           .geoMercator()
-          .fitExtent(europeViewport, europeFrame)
-          .clipExtent(europeViewport);
+            .center(europeCenter)
+            .scale(europeScale)
+            .translate([width / 2, height / 2]);
+
   const geoPath = d3.geoPath(projection);
   const graticule = d3.geoGraticule10();
   const maxTrips = d3.max(routeData, (d) => d.trips) ?? 1;
   const strokeWidth = d3.scaleSqrt().domain([1, maxTrips]).range([0.8, 5.2]);
   const strokeOpacity = d3.scaleLinear().domain([1, maxTrips]).range([0.12, 0.92]);
   const highlightThreshold = d3.quantile(routeData.map((d) => d.trips), 0.85) ?? maxTrips;
-  const portugalAreaPath = geoPath({
-    type: 'Polygon',
-    coordinates: [[
-      [-9.8, 36.8],
-      [-6.0, 36.8],
-      [-6.0, 42.2],
-      [-9.8, 42.2],
-      [-9.8, 36.8],
-    ]],
-  });
 
   return (
     <div className="story-chart story-chart--map">
@@ -727,7 +705,6 @@ function RouteMapChart({ rows }: { rows: HotelBookingReadyRow[] }) {
         <path d={geoPath(land as never) ?? ''} className="story-map__land" />
         <path d={geoPath(boundaries as never) ?? ''} className="story-map__boundaries" />
         <path d={geoPath(graticule) ?? ''} className="story-map__graticule" />
-        {portugalAreaPath && <path d={portugalAreaPath} className="story-map__portugal-focus" />}
 
         {routeData.map((route) => {
           const linePath = geoPath({
@@ -770,25 +747,6 @@ function RouteMapChart({ rows }: { rows: HotelBookingReadyRow[] }) {
           );
         })}
       </svg>
-
-      <div className="story-map__controls" aria-label="Map zoom presets">
-        <button
-          type="button"
-          className={`story-map__preset-btn ${mapView === 'world' ? 'is-active' : ''}`}
-          onClick={() => setMapView('world')}
-          aria-pressed={mapView === 'world'}
-        >
-          World
-        </button>
-        <button
-          type="button"
-          className={`story-map__preset-btn ${mapView === 'europe' ? 'is-active' : ''}`}
-          onClick={() => setMapView('europe')}
-          aria-pressed={mapView === 'europe'}
-        >
-          Europe
-        </button>
-      </div>
     </div>
   );
 }
