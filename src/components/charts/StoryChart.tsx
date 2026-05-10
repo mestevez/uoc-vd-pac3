@@ -198,7 +198,7 @@ function getCombinedBarsLineChartModel(
   return {
     kind: 'bar-line-dual-axis',
     title: 'Volum de reserves i cancel·lació per país',
-    subtitle: 'Barres: volum de reserves (eix esquerre). Línia: % cancel·lació (eix dret).',
+    subtitle: 'Barres: volum de reserves (eix esquerre). Àrea: % cancel·lació (eix dret).',
     data,
     leftFormat: (value) => d3.format('~s')(value),
     rightFormat: (value) => `${value.toFixed(1)}%`,
@@ -597,10 +597,11 @@ function ComboBarLineChart({ model, width, height, margin, innerWidth, innerHeig
 
   const leftTicks = yLeft.ticks(4);
   const rightTicks = [0, 25, 50, 75, 100];
-  const lineData = d3
-    .line<ComboPoint>()
+  const areaData = d3
+    .area<ComboPoint>()
     .x((d) => (x(d.label) ?? 0) + x.bandwidth() / 2)
-    .y((d) => yRight(d.cancelRate))(model.data);
+    .y0(innerHeight)
+    .y1((d) => yRight(d.cancelRate))(model.data);
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={model.title}>
@@ -656,7 +657,7 @@ function ComboBarLineChart({ model, width, height, margin, innerWidth, innerHeig
           );
         })}
 
-        {lineData && <path d={lineData} fill="none" className="story-chart__line story-chart__line--cancel" />}
+        {areaData && <path d={areaData} className="story-chart__area--cancel" />}
 
         {model.data.map((point) => {
           const centerX = (x(point.label) ?? 0) + x.bandwidth() / 2;
