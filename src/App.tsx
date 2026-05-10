@@ -48,11 +48,23 @@ const steps: StoryStep[] = [
     },
   },
   {
+    id: 'turism-impact',
+    eyebrow: '',
+    title: 'Importància econòmica',
+    body: 'El sector del Turisme i dels Viatges a Portugal, representa al voltant del 21,5 % del PIB.',
+    accent: '#7c3aed',
+    visual: {
+      kind: 'image',
+      src: 'images/lisboa-skyline.png',
+      alt: "Il·lustració que mostra un avís de 'Dades limitades' per indicar que els resultats presentats es basen en dades específiques i no es poden generalitzar a altres contexts.",
+    },
+  },
+  {
     id: 'intro-problem',
     eyebrow: '',
     title: 'Gran volúm de cancel·lacions',
     body:
-      'Les cancel·lacions són un repte important per a la gestió hotelera, ja que poden afectar la previsió d’ocupació i les decisions d’inventari.',
+      'Les cancel·lacions són un repte important per a la gestió hotelera, ja que poden afectar la previsió d’ocupació, les decisions d’inventari i la contractació de personal.',
     accent: '#8b5cf6',
     visual: {
       kind: 'chart',
@@ -233,7 +245,7 @@ const steps: StoryStep[] = [
     eyebrow: '',
     title: 'Definició d\'un overbooking amb risc controlat',
     body:
-      'Combinant els factors de més risc, com la procedència i el motiu del viatge, amb els que ofereixen més seguretat, com la fidelitat, i la capacitat real dels hotels i l\'estat actual de les reserves, es pot estimar quin nivell d\'overbooking oferir de manera informada.',
+      'Quan es posen en conjunt els factors que incrementen el risc de cancel·lació i aquells que aporten més seguretat, juntament amb la capacitat hotelera i la situació real de les reserves, es construeix una base sòlida per decidir de manera informada quin nivell d’overbooking es pot assumir.',
     accent: '#7c3aed',
     visual: {
       kind: 'chart',
