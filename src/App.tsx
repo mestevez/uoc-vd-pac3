@@ -43,9 +43,8 @@ const steps: StoryStep[] = [
       'Les cancel·lacions són un repte important per a la gestió hotelera, ja que poden afectar la previsió d’ocupació i les decisions d’inventari.',
     accent: '#8b5cf6',
     visual: {
-      kind: 'image',
-      src: 'images/intro/seasonality.svg',
-      alt: 'Calendari amb temporada alta i mitjana de reserves.',
+      kind: 'chart',
+      chartId: 'cancel-share-overall',
     },
   },
   {

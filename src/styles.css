@@ -217,11 +217,25 @@ h1 {
 
 .story-chart__axis-text {
   fill: #94a3b8;
-  font-size: 0.67rem;
+  font-size: 0.82rem;
 }
 
 .story-chart__bar {
   fill: #60a5fa;
+}
+
+.story-chart__bar--cancelled {
+  fill: #f87171;
+}
+
+.story-chart__bar--secondary {
+  fill: #22d3ee;
+}
+
+.story-chart__value-text {
+  fill: #e2e8f0;
+  font-size: 0.79rem;
+  font-weight: 600;
 }
 
 .story-chart__line {
@@ -279,7 +293,7 @@ h1 {
 
 .story-map__label {
   fill: #cbd5e1;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
 }
 
 .story-map__controls {
@@ -397,7 +411,7 @@ h1 {
   }
 
   .story-chart__axis-text {
-    font-size: 0.63rem;
+    font-size: 0.76rem;
   }
 }
 

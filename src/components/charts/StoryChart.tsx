@@ -11,6 +11,7 @@ type StoryChartProps = {
 
 export type StoryChartId =
   | 'routes-map'
+  | 'cancel-share-overall'
   | 'cancel-rate-by-hotel'
   | 'lead-time-by-segment'
   | 'monthly-cancel-trend'
@@ -88,6 +89,7 @@ type LinePoint = {
 
 type ChartModel =
   | { kind: 'bar'; title: string; subtitle: string; data: BarPoint[]; format: (value: number) => string }
+  | { kind: 'bar-horizontal'; title: string; subtitle: string; data: BarPoint[]; format: (value: number) => string }
   | { kind: 'line'; title: string; subtitle: string; data: LinePoint[]; format: (value: number) => string };
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -106,6 +108,22 @@ function byValueDesc<T extends { value: number }>(a: T, b: T): number {
 }
 
 function getChartModel(rows: HotelBookingReadyRow[], chartId: StoryChartId): ChartModel {
+  if (chartId === 'cancel-share-overall') {
+    const canceledShare = (d3.mean(rows, (d) => d.isCanceled) ?? 0) * 100;
+    const data = [
+      { label: 'Cancel·lades', value: canceledShare },
+      { label: 'No cancel·lades', value: Math.max(0, 100 - canceledShare) },
+    ];
+
+    return {
+      kind: 'bar-horizontal',
+      title: 'Proporció total de cancel·lacions',
+      subtitle: 'Percentatge de reserves cancel·lades vs no cancel·lades.',
+      data,
+      format: (value) => `${value.toFixed(1)}%`,
+    };
+  }
+
   if (chartId === 'cancel-rate-by-hotel') {
     const grouped = Array.from(
       d3.rollup(
@@ -199,6 +217,15 @@ export default function StoryChart({ rows, chartId }: StoryChartProps) {
     <div className="story-chart">
       {model.kind === 'bar' ? (
         <BarChart model={model} width={width} height={height} margin={margin} innerWidth={innerWidth} innerHeight={innerHeight} />
+      ) : model.kind === 'bar-horizontal' ? (
+        <HorizontalBarChart
+          model={model}
+          width={width}
+          height={height}
+          margin={{ top: 44, right: 28, bottom: 40, left: 130 }}
+          innerWidth={width - 130 - 28}
+          innerHeight={height - 44 - 40}
+        />
       ) : (
         <LineChart model={model} width={width} height={height} margin={margin} innerWidth={innerWidth} innerHeight={innerHeight} />
       )}
@@ -494,6 +521,68 @@ function LineChart({ model, width, height, margin, innerWidth, innerHeight }: Ch
                   {point.label}
                 </text>
               )}
+            </g>
+          );
+        })}
+      </g>
+    </svg>
+  );
+}
+
+function HorizontalBarChart({ model, width, height, margin, innerWidth, innerHeight }: ChartBoxProps & { model: Extract<ChartModel, { kind: 'bar-horizontal' }> }) {
+  const y = d3
+    .scaleBand<string>()
+    .domain(model.data.map((d) => d.label))
+    .range([0, innerHeight])
+    .padding(0.28);
+
+  const x = d3.scaleLinear().domain([0, 100]).range([0, innerWidth]);
+  const ticks = x.ticks(5);
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={model.title}>
+      <g transform={`translate(${margin.left},${margin.top})`}>
+        {ticks.map((tick) => (
+          <g key={tick} transform={`translate(${x(tick)},0)`}>
+            <line x1={0} x2={0} y1={0} y2={innerHeight} className="story-chart__grid" />
+            <text x={0} y={innerHeight + 18} textAnchor="middle" className="story-chart__axis-text">
+              {model.format(tick)}
+            </text>
+          </g>
+        ))}
+
+        {model.data.map((point) => {
+          const yPos = y(point.label);
+          if (yPos === undefined) {
+            return null;
+          }
+
+          const valueX = x(point.value);
+          const placeLabelOutside = valueX < innerWidth - 70;
+
+          return (
+            <g key={point.label} transform={`translate(0,${yPos})`}>
+              <rect
+                x={0}
+                y={0}
+                width={valueX}
+                height={y.bandwidth()}
+                rx={8}
+                className={`story-chart__bar ${point.label === 'Cancel·lades' ? 'story-chart__bar--cancelled' : 'story-chart__bar--secondary'}`}
+              />
+
+              <text x={-10} y={y.bandwidth() / 2 + 4} textAnchor="end" className="story-chart__axis-text">
+                {point.label}
+              </text>
+
+              <text
+                x={placeLabelOutside ? valueX + 8 : valueX - 8}
+                y={y.bandwidth() / 2 + 4}
+                textAnchor={placeLabelOutside ? 'start' : 'end'}
+                className="story-chart__value-text"
+              >
+                {model.format(point.value)}
+              </text>
             </g>
           );
         })}
