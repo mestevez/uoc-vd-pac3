@@ -15,6 +15,7 @@ export type StoryChartId =
   | 'cancel-by-country'
   | 'cancel-rate-by-hotel'
   | 'cancel-rate-by-motivation'
+  | 'cancel-rate-by-stay_length'
   | 'lead-time-by-segment'
   | 'monthly-cancel-trend'
   | 'adr-by-deposit';
@@ -128,7 +129,9 @@ function getCombinedBarsLineChartModel(
     rows: HotelBookingReadyRow[],
     chartId: StoryChartId,
     category: keyof HotelBookingReadyRow,
-    rotateXLabel?: boolean
+    rotateXLabel?: boolean,
+    minGroupSize?: number,
+    customOrder?: string[]
 ): ChartModel {
   const grouped = Array.from(
       d3.rollup(
@@ -146,12 +149,12 @@ function getCombinedBarsLineChartModel(
       }),
   );
 
-  const majorCountries = grouped.filter((d) => d.reservations >= 1000);
-  const otherCountries = grouped.filter((d) => d.reservations < 1000);
-  const otherReservations = d3.sum(otherCountries, (d) => d.reservations);
-  const otherCanceled = d3.sum(otherCountries, (d) => d.canceled);
+  const majorGroupValues = grouped.filter((d) => d.reservations >= (minGroupSize ?? 0));
+  const otherValues = grouped.filter((d) => d.reservations < (minGroupSize ?? 0));
+  const otherReservations = d3.sum(otherValues, (d) => d.reservations);
+  const otherCanceled = d3.sum(otherValues, (d) => d.canceled);
 
-  const data: ComboPoint[] = majorCountries.map((d) => ({
+  const data: ComboPoint[] = majorGroupValues.map((d) => ({
     label: d.label,
     reservations: d.reservations,
     cancelRate: d.reservations > 0 ? (d.canceled / d.reservations) * 100 : 0,
@@ -165,7 +168,25 @@ function getCombinedBarsLineChartModel(
     });
   }
 
-  data.sort((a, b) => b.reservations - a.reservations);
+  // Apply custom order if provided, otherwise sort by reservations
+  if (customOrder && customOrder.length > 0) {
+    data.sort((a, b) => {
+      const aIndex = customOrder.indexOf(a.label);
+      const bIndex = customOrder.indexOf(b.label);
+
+      // Both items are in customOrder, sort by their position
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      // Item a is in customOrder, it comes first
+      if (aIndex !== -1) return -1;
+      // Item b is in customOrder, it comes first
+      if (bIndex !== -1) return 1;
+
+      // Neither is in customOrder, maintain existing order
+      return 0;
+    });
+  } else {
+    data.sort((a, b) => b.reservations - a.reservations);
+  }
 
   return {
     kind: 'bar-line-dual-axis',
@@ -200,11 +221,15 @@ function getChartModel(rows: HotelBookingReadyRow[], chartId: StoryChartId): Cha
   }
 
   if (chartId === 'cancel-by-country') {
-    return getCombinedBarsLineChartModel(rows, chartId, 'country', true);
+    return getCombinedBarsLineChartModel(rows, chartId, 'country', true, 1000);
   }
 
   if (chartId === 'cancel-rate-by-motivation') {
     return getCombinedBarsLineChartModel(rows, chartId, 'motivation');
+  }
+
+  if (chartId === 'cancel-rate-by-stay_length') {
+    return getCombinedBarsLineChartModel(rows, chartId, 'stayLength', false, undefined, ['short', 'middle', 'long']);
   }
 
   if (chartId === 'lead-time-by-segment') {

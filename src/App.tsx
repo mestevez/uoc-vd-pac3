@@ -77,10 +77,22 @@ const steps: StoryStep[] = [
     title: 'Cancel·lacions per motiu del viatge',
     body:
       'Tot i que la taxa de cancel·lació és similar segons la motivació del viatge, els viatges de feina destaquen pel seu major volum de reserves.',
-    accent: '#ef4444',
+    accent: '#efab44',
     visual: {
       kind: 'chart',
       chartId: 'cancel-rate-by-motivation',
+    },
+  },
+  {
+    id: 'stay_length-cancellations',
+    eyebrow: '',
+    title: 'Cancel·lacions per la durada del viatge',
+    body:
+      'Tot i que la taxa de cancel·lació és similar segons la motivació del viatge, els viatges de feina destaquen pel seu major volum de reserves.',
+    accent : '#22c55e',
+    visual: {
+      kind: 'chart',
+      chartId: 'cancel-rate-by-stay_length',
     },
   },
 ];
