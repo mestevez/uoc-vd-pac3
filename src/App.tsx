@@ -21,32 +21,10 @@ type StoryStep = {
   body: string;
   footer?: string;
   accent: string;
-  visual: StoryVisual;
+  visual?: StoryVisual;
 };
 
 const steps: StoryStep[] = [
-  {
-    id: 'intro-world',
-    eyebrow: '',
-    title: 'Portugal, destinació clau',
-    body: 'Portugal és una destinació turística molt atractiva, que rep viatgers de molts països i amb interessos molt diversos.',
-    accent: '#7c3aed',
-    visual: {
-      kind: 'chart',
-      chartId: 'routes-map-world',
-    },
-  },
-  {
-    id: 'intro-local',
-    eyebrow: '',
-    title: 'Tràfic intern',
-    body: 'Així mateix, inclou un volum important de viatges locals.',
-    accent: '#7c3aed',
-    visual: {
-      kind: 'chart',
-      chartId: 'routes-map-local',
-    },
-  },
   {
     id: 'turism-impact',
     eyebrow: '',
@@ -69,6 +47,28 @@ const steps: StoryStep[] = [
     visual: {
       kind: 'chart',
       chartId: 'cancel-share-overall',
+    },
+  },
+  {
+    id: 'intro-world',
+    eyebrow: '',
+    title: 'Portugal, destinació clau',
+    body: 'Portugal és una destinació turística molt atractiva, que rep viatgers de molts països i amb interessos molt diversos.',
+    accent: '#7c3aed',
+    visual: {
+      kind: 'chart',
+      chartId: 'routes-map-world',
+    },
+  },
+  {
+    id: 'intro-local',
+    eyebrow: '',
+    title: 'Tràfic intern',
+    body: 'Així mateix, inclou un volum important de viatges locals.',
+    accent: '#7c3aed',
+    visual: {
+      kind: 'chart',
+      chartId: 'routes-map-local',
     },
   },
   {
@@ -257,12 +257,7 @@ const steps: StoryStep[] = [
     eyebrow: '',
     title: 'Limitacions',
     body: 'Aquests resultats es basen en dades de dues localitzacions concretes de Portugal i no es poden generalitzar. Els patrons observats poden ser específics d’aquestes àrees i variar en altres destinacions.',
-    accent: '#7c3aed',
-    visual: {
-      kind: 'image',
-      src: 'images/data-limitations.png',
-      alt: "Il·lustració que mostra un avís de 'Dades limitades' per indicar que els resultats presentats es basen en dades específiques i no es poden generalitzar a altres contexts.",
-    },
+    accent: '#7c3aed'
   },
 ];
 
@@ -346,7 +341,7 @@ export default function App() {
             </article>
           ))}
         </div>
-
+        {activeStory.visual ? (
         <div className="story-visual sticky-panel" aria-live="polite">
           <div
             className="story-visual__card"
@@ -382,6 +377,7 @@ export default function App() {
 
           </div>
         </div>
+        ) : null}
       </section>
     </main>
   );
